@@ -4,49 +4,73 @@ import {
   Activity, ArrowDownToLine, ArrowLeft, ArrowRight, Bell, CalendarDays, Check,
   ChevronDown, FileCheck2, FilePlus2, FileText, LayoutDashboard, LogOut, Menu,
   PackageCheck, Plus, Search, ShieldCheck, Truck, Users, X, Mail, MessageCircle,
-  PenLine, ExternalLink, Send
+  PenLine, Send, Layers, Sparkles
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
-import { generateContractPdf, generateGatePassPdf, SOURCE_TERMS } from "./lib/documents";
+import { generateContractPdf, generateGatePassPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
 
-// STEP 1: COTTON SEED (Strictly the 13 fields from the PDF)
-const blankContract = {
+// MODULE 1: COTTON SEED (Strictly the 13 fields from PDF 1)
+const blankCottonSeed = {
+  module: "cotton_seed",
   contract_date: new Date().toLocaleDateString("en-CA"), // 1. DATE
-  contract_number: "",                                  // 2. CONTRACT NUMBER
+  contract_number: "",                                  // 2. CONTRACT NUMBER .
   party_name: "",                                       // 3. PARTY NAME
   gst_number: "",                                       // 4. GST NUMBER
   party_address: "",                                    // 5. ADDREESS
   contact_number: "",                                   // 6. CONTACT NO.
-  quantity_quintals: "",                                // 7. QUANTITY
+  quantity: "",                                         // 7. QUANTITY
   commodity: "COTTON SEED",                             // 8. COMMODITY : COTTON SEED
   delivery_condition: "",                               // 9. DELIVERY CONDITION
   payment_condition: "",                                // 10. PAYMENT CONDITION
   rate_per_quintal: "",                                 // 11. RATE PER QUINTALS
-  packing_type: "LOOSE",                                // 12. PACKING TYPE : LOOSE/BAGS
+  packing_type: "LOOSE",                                // 12. PACKING TYPE :LOOSE/BAGS
   delivery_address: "",                                 // 13. DELIVERY ADDRESS
   status: "draft"
 };
 
-// Step 3: Loading details as per contract (Strictly the 6 fields from the PDF)
-const blankLoading = {
+// MODULE 2: NET COTTON (Strictly the 15 fields from PDF 2)
+const blankNetCotton = {
+  module: "net_cotton",
+  contract_date: new Date().toLocaleDateString("en-CA"), // 1. DATE
+  contract_number: "",                                  // 2. CONTRACT NUMBER .
+  party_name: "",                                       // 3. PARTY NAME
+  gst_number: "",                                       // 4. GST NUMBER
+  party_address: "",                                    // 5. ADDREESS
+  contact_number: "",                                   // 6. CONTACT NO.
+  broker_name_and_firm_name: "",                        // 7. BROKER NAME AND FIRM NAME
+  pr_no: "",                                            // 8. PR NO .
+  lot_no: "",                                           // 9. LOT NO.
+  quantity: "",                                         // 10. QUANTITY
+  commodity: "COTTON BALES",                            // 11. COMMODITY : COTTON BALES
+  delivery_condition: "",                               // 12. DELIVERY CONDITION
+  payment_condition: "",                                // 13. PAYMENT CONDITION
+  rate_per_candy: "",                                   // 14. RATE PER CANDY
+  delivery_address: "",                                 // 15. DELIVERY ADDRESS
+  status: "draft"
+};
+
+// Step 3 Loading Details: Module 1 has 6 fields; Module 2 has 7 fields (adds Driver contact number)
+const blankLoadingDetails = {
   vehicle_number: "",          // 1. Truck /tempo number
   net_weight_quintals: "",     // 2. Net Weight quintals
   driver_license_number: "",   // 3. Driver license no.
-  transport_number: "",        // 4. Transport no.
-  transport_name: "",          // 5. Transport name
-  lr_number: ""                // 6. Lr no.
+  driver_contact_number: "",   // 4. Driver contact number (Module 2 Net Cotton only)
+  transport_number: "",        // Transport no. (CS: #4, NC: #5)
+  transport_name: "",          // Transport name / Transporter name (CS: #5, NC: #6)
+  lr_number: ""                // Lr no. / LR no. (CS: #6, NC: #7)
 };
 
 const demoContracts = [
   {
     id: "demo-1",
+    module: "cotton_seed",
     contract_number: "CS-2026-001",
     contract_date: "2026-10-10",
     party_name: "Shree Ganesh Agro Oil Mill",
     gst_number: "24AAACG1234F1Z1",
     party_address: "Kadi, Gujarat",
     contact_number: "+91 98250 11111",
-    quantity_quintals: 250,
+    quantity: "250",
     commodity: "COTTON SEED",
     delivery_condition: "Ready Delivery (Ex-Factory)",
     payment_condition: "Immediate on delivery / RTGS",
@@ -57,19 +81,22 @@ const demoContracts = [
   },
   {
     id: "demo-2",
-    contract_number: "CS-2026-002",
+    module: "net_cotton",
+    contract_number: "NC-2026-001",
     contract_date: "2026-10-12",
-    party_name: "Patel Seed Crushers",
+    party_name: "Patel Spinners & Textiles Ltd",
     gst_number: "24AABCP5678K1Z5",
-    party_address: "Mansa, Gandhinagar",
+    party_address: "Surat, Gujarat",
     contact_number: "+91 98250 22222",
-    quantity_quintals: 300,
-    commodity: "COTTON SEED",
+    broker_name_and_firm_name: "Shrenik Shah (Shrenik Cotton Brokers)",
+    pr_no: "PR-104",
+    lot_no: "LOT-58",
+    quantity: "100 Bales (170 qtl)",
+    commodity: "COTTON BALES",
     delivery_condition: "FOR Destination",
-    payment_condition: "7 days credit",
-    rate_per_quintal: 3700,
-    packing_type: "BAGS",
-    delivery_address: "Mansa Industrial Area, Gujarat",
+    payment_condition: "Immediate upon delivery",
+    rate_per_candy: 58500,
+    delivery_address: "Surat Textile Park, Gujarat",
     status: "loading"
   }
 ];
@@ -77,7 +104,7 @@ const demoContracts = [
 function useContracts(offlineOverride = false) {
   const [contracts, setContracts] = useState(() => {
     try {
-      const saved = localStorage.getItem("seedledger_contracts");
+      const saved = localStorage.getItem("seedledger_contracts_v2");
       return saved ? JSON.parse(saved) : demoContracts;
     } catch { return demoContracts; }
   });
@@ -88,7 +115,7 @@ function useContracts(offlineOverride = false) {
   const setContractsAndPersist = (updater) => {
     setContracts(old => {
       const next = typeof updater === "function" ? updater(old) : updater;
-      try { localStorage.setItem("seedledger_contracts", JSON.stringify(next)); } catch (e) {}
+      try { localStorage.setItem("seedledger_contracts_v2", JSON.stringify(next)); } catch (e) {}
       return next;
     });
   };
@@ -96,7 +123,7 @@ function useContracts(offlineOverride = false) {
   async function refresh() {
     if (demoMode) {
       try {
-        const saved = localStorage.getItem("seedledger_contracts");
+        const saved = localStorage.getItem("seedledger_contracts_v2");
         if (saved) setContracts(JSON.parse(saved));
       } catch (e) {}
       return;
@@ -104,7 +131,7 @@ function useContracts(offlineOverride = false) {
     const { data, error: queryError } = await supabase
       .from("contracts").select("*").order("created_at", { ascending: false });
     if (queryError) setError(queryError.message);
-    else setContracts(data || []);
+    else if (data && data.length) setContracts(data);
     setLoading(false);
   }
 
@@ -117,9 +144,18 @@ export default function App() {
   const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem("seedledger_offline_mode") === "true");
   const [authChecked, setAuthChecked] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  
+  // Active Module State: "cotton_seed" (Module 1) or "net_cotton" (Module 2)
+  const [activeModule, setActiveModule] = useState(() => localStorage.getItem("active_app_module") || "cotton_seed");
+
   const location = useLocation();
   const navigate = useNavigate();
   const data = useContracts(offlineMode);
+
+  const switchModule = (mod) => {
+    setActiveModule(mod);
+    localStorage.setItem("active_app_module", mod);
+  };
 
   useEffect(() => {
     if (!isSupabaseConfigured || offlineMode) { setAuthChecked(true); return; }
@@ -139,16 +175,19 @@ export default function App() {
     setSession(null);
   };
 
-  if (!authChecked) return <div className="boot-screen"><div className="app-logo-badge"><img src="/logo.svg" alt="Logo" className="app-logo-img" style={{ width: 60 }}/></div><span>Loading Shree Jagdamba Cotton Seed System…</span></div>;
+  if (!authChecked) return <div className="boot-screen"><div className="app-logo-badge"><img src="/logo.svg" alt="Logo" className="app-logo-img" style={{ width: 60 }}/></div><span>Loading Shree Jagdamba System…</span></div>;
   if (isSupabaseConfigured && !session && !offlineMode) return <Login onLogin={setSession} onOffline={() => {
     setOfflineMode(true);
     localStorage.setItem("seedledger_offline_mode", "true");
   }} />;
 
+  const moduleName = activeModule === "net_cotton" ? "Net Cotton" : "Cotton Seed";
+  const commodityName = activeModule === "net_cotton" ? "COTTON BALES" : "COTTON SEED";
+
   const pageTitle = ({
     "/": "Overview",
     "/contracts": "Contract Register",
-    "/contracts/new": "Step 1: Cotton Seed Contract Details",
+    "/contracts/new": `Step 1: ${moduleName} Contract Details`,
     "/confirmations": "Step 2: Send to Buyer",
     "/loading": "Step 3: Loading Management",
     "/gate-passes": "Step 4: Gate Passes",
@@ -161,13 +200,40 @@ export default function App() {
       <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`} style={{ overflowY: "auto" }}>
         <div className="brand">
           <div className="app-logo-badge"><img src="/logo.svg" alt="Shree Jagdamba" className="app-logo-img"/></div>
-          <div><strong>Shree Jagdamba</strong><span>COTTON SEED</span></div>
+          <div><strong>Shree Jagdamba</strong><span>{commodityName}</span></div>
           <button className="icon-button sidebar-close" onClick={() => setMobileOpen(false)}><X size={18}/></button>
         </div>
-        <div className="workspace-label">COTTON SEED WORKFLOW</div>
+
+        {/* Module Switcher Tab inside Sidebar */}
+        <div style={{ padding: "0 10px 16px" }}>
+          <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: 4, borderRadius: 10, display: "flex", gap: 4 }}>
+            <button
+              onClick={() => switchModule("cotton_seed")}
+              style={{
+                flex: 1, padding: "7px 6px", fontSize: 11, fontWeight: 700, border: 0, borderRadius: 7, cursor: "pointer",
+                background: activeModule === "cotton_seed" ? "#ffffff" : "transparent",
+                color: activeModule === "cotton_seed" ? "#0f172a" : "#94a3b8"
+              }}
+            >
+              Module 1: Seed
+            </button>
+            <button
+              onClick={() => switchModule("net_cotton")}
+              style={{
+                flex: 1, padding: "7px 6px", fontSize: 11, fontWeight: 700, border: 0, borderRadius: 7, cursor: "pointer",
+                background: activeModule === "net_cotton" ? "#ffffff" : "transparent",
+                color: activeModule === "net_cotton" ? "#0f172a" : "#94a3b8"
+              }}
+            >
+              Module 2: Net Cotton
+            </button>
+          </div>
+        </div>
+
+        <div className="workspace-label">{moduleName.toUpperCase()} WORKFLOW</div>
         <nav className="nav-list">
           <NavItem to="/" icon={<LayoutDashboard size={18}/>} label="Overview" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/contracts" icon={<FileText size={18}/>} label="Contract Register" count={data.contracts.length} onClick={() => setMobileOpen(false)} />
+          <NavItem to="/contracts" icon={<FileText size={18}/>} label="Contract Register" count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule).length} onClick={() => setMobileOpen(false)} />
           <NavItem to="/contracts/new" icon={<FilePlus2 size={18}/>} label="Step 1: New Contract" onClick={() => setMobileOpen(false)} />
           <NavItem to="/confirmations" icon={<Send size={18}/>} label="Step 2: Send to Buyer" onClick={() => setMobileOpen(false)} />
           <NavItem to="/loading" icon={<Truck size={18}/>} label="Step 3: Loading" onClick={() => setMobileOpen(false)} />
@@ -176,7 +242,7 @@ export default function App() {
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="secure-card"><ShieldCheck size={18}/><div><strong>Cotton Seed Desk</strong><span>Broker Confirmation Workflow</span></div></div>
+          <div className="secure-card"><ShieldCheck size={18}/><div><strong>{moduleName} Desk</strong><span>4-Step Contract & Gate Pass</span></div></div>
           <div className="profile-row"><div className="avatar">BO</div><div className="profile-copy"><strong>Broker Office</strong><span>Authorized</span></div><button className="icon-button" onClick={signOut} title="Sign out"><LogOut size={16}/></button></div>
         </div>
       </aside>
@@ -185,30 +251,58 @@ export default function App() {
         <header className="topbar">
           <div className="topbar-left">
             <button className="icon-button menu-toggle" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
-            <div className="breadcrumbs"><span>Cotton Seed Workspace</span><span className="crumb-slash">/</span><strong>{pageTitle}</strong></div>
+            <div className="breadcrumbs"><span>{moduleName} Workspace</span><span className="crumb-slash">/</span><strong>{pageTitle}</strong></div>
           </div>
           <div className="topbar-actions">
+            {/* Topbar Quick Switcher */}
+            <div style={{ display: "flex", gap: 6, background: "#f1f5f9", padding: 3, borderRadius: 8 }}>
+              <button
+                onClick={() => switchModule("cotton_seed")}
+                style={{
+                  border: 0, padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                  background: activeModule === "cotton_seed" ? "#0f172a" : "transparent",
+                  color: activeModule === "cotton_seed" ? "#ffffff" : "#64748b"
+                }}
+              >
+                Module 1: Cotton Seed (13 fields)
+              </button>
+              <button
+                onClick={() => switchModule("net_cotton")}
+                style={{
+                  border: 0, padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                  background: activeModule === "net_cotton" ? "#0f172a" : "transparent",
+                  color: activeModule === "net_cotton" ? "#ffffff" : "#64748b"
+                }}
+              >
+                Module 2: Net Cotton (15 fields)
+              </button>
+            </div>
+
             <div className="today-pill"><CalendarDays size={15}/>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
-            <button className="icon-button notification-button" title="Notifications"><Bell size={18}/><i /></button>
             <div className="top-avatar">BO</div>
           </div>
         </header>
-        {data.demoMode && <div className="demo-banner" style={{ background: "#ecfdf5", borderColor: "#a7f3d0", color: "#065f46" }}><Activity size={15}/><span><strong>Local Workspace</strong> — All 4 Steps (Contract 13 details, Send to Buyer, Loading 6 fields, Gate Pass) active.</span></div>}
+
+        {data.demoMode && <div className="demo-banner" style={{ background: "#ecfdf5", borderColor: "#a7f3d0", color: "#065f46" }}><Activity size={15}/><span><strong>Active Workspace ({moduleName})</strong> — Follows the exact specification PDF for {moduleName} with zero extra fields.</span></div>}
         {data.error && <div className="error-banner">{data.error}</div>}
+
         <div className="page-content">
           <Routes>
-            <Route path="/" element={<Dashboard data={data} />} />
-            <Route path="/contracts" element={<ContractRegister data={data} />} />
-            <Route path="/contracts/new" element={<ContractForm data={data} />} />
-            <Route path="/confirmations" element={<ConfirmationsPage data={data} />} />
-            <Route path="/contracts/:id" element={<ContractDetail data={data} />} />
-            <Route path="/loading" element={<LoadingPage data={data} />} />
-            <Route path="/gate-passes" element={<GatePasses data={data} />} />
-            <Route path="/parties" element={<PartiesPage data={data} />} />
-            <Route path="*" element={<Dashboard data={data} />} />
+            <Route path="/" element={<Dashboard data={data} activeModule={activeModule} switchModule={switchModule} />} />
+            <Route path="/contracts" element={<ContractRegister data={data} activeModule={activeModule} />} />
+            <Route path="/contracts/new" element={<ContractForm data={data} activeModule={activeModule} />} />
+            <Route path="/confirmations" element={<ConfirmationsPage data={data} activeModule={activeModule} />} />
+            <Route path="/contracts/:id" element={<ContractDetail data={data} activeModule={activeModule} />} />
+            <Route path="/loading" element={<LoadingPage data={data} activeModule={activeModule} />} />
+            <Route path="/gate-passes" element={<GatePasses data={data} activeModule={activeModule} />} />
+            <Route path="/parties" element={<PartiesPage data={data} activeModule={activeModule} />} />
+            <Route path="*" element={<Dashboard data={data} activeModule={activeModule} switchModule={switchModule} />} />
           </Routes>
         </div>
-        <footer className="footer"><span>© {new Date().getFullYear()} Shree Jagdamba Cotton Seed System</span><span><span className="status-dot"/> 4-Step Contract & Gate Pass Workflow</span></footer>
+        <footer className="footer">
+          <span>© {new Date().getFullYear()} Shree Jagdamba — {moduleName} System</span>
+          <span><span className="status-dot"/> Exact 4-Step Contract & Gate Pass Workflow</span>
+        </footer>
       </main>
     </div>
   );
@@ -229,7 +323,7 @@ function Login({ onLogin, onOffline }) {
     if (authError) setError(authError.message); else onLogin(data.session);
     setBusy(false);
   }
-  return <div className="login-page"><div className="login-decoration"><div className="login-orbit orbit-one"/><div className="login-orbit orbit-two"/><div className="login-copy"><div className="app-logo-badge"><img src="/logo.svg" alt="Shree Jagdamba" className="app-logo-img"/></div><p className="eyebrow">COTTON SEED CONTRACT MANAGEMENT</p><h1>Cotton Seed Contracts.<br/><em>In exact order.</em></h1><p>4-step lifecycle: Step 1 Details, Step 2 Buyer confirmation, Step 3 Loading records, and Step 4 Gate passes.</p><div className="login-feature"><ShieldCheck size={18}/> Authorized office & broker team access</div></div></div><div className="login-form-wrap"><form className="login-form" onSubmit={submit}><span className="eyebrow">WELCOME BACK</span><h2>Sign in to Shree Jagdamba</h2><p>Use your authorized office account to continue.</p><label>Email address<input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com"/></label><label>Password<input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password"/></label>{error && <div className="form-error">{error}</div>}<button className="button primary full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}<ArrowRight size={16}/></button>{onOffline && <button type="button" className="button secondary full" onClick={onOffline} style={{marginTop: 10, justifyContent: "center", fontWeight: 700}}>⚡ Enter Offline Workspace (Instant Demo)</button>}<small>Staff accounts must be created by an authorized administrator.</small></form></div></div>;
+  return <div className="login-page"><div className="login-decoration"><div className="login-orbit orbit-one"/><div className="login-orbit orbit-two"/><div className="login-copy"><div className="app-logo-badge"><img src="/logo.svg" alt="Shree Jagdamba" className="app-logo-img"/></div><p className="eyebrow">CONTRACT MANAGEMENT SYSTEM</p><h1>Module 1: Cotton Seed<br/>Module 2: Net Cotton</h1><p>Strictly per PDF specification: 4-step workflow, contract confirmation, and gate pass.</p><div className="login-feature"><ShieldCheck size={18}/> Authorized office access</div></div></div><div className="login-form-wrap"><form className="login-form" onSubmit={submit}><span className="eyebrow">WELCOME BACK</span><h2>Sign in to Shree Jagdamba</h2><p>Use your authorized office account to continue.</p><label>Email address<input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com"/></label><label>Password<input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password"/></label>{error && <div className="form-error">{error}</div>}<button className="button primary full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}<ArrowRight size={16}/></button>{onOffline && <button type="button" className="button secondary full" onClick={onOffline} style={{marginTop: 10, justifyContent: "center", fontWeight: 700}}>⚡ Enter Offline Workspace (Instant Demo)</button>}<small>Staff accounts must be created by an authorized administrator.</small></form></div></div>;
 }
 
 function PageHeading({ eyebrow, title, description, action }) {
@@ -246,27 +340,29 @@ function StatCard({ label, value, change, icon, tone = "blue", onClick }) {
   );
 }
 
-function Dashboard({ data }) {
-  const { contracts } = data;
-  const totalQuintals = contracts.reduce((sum, c) => sum + Number(c.quantity_quintals || 0), 0);
-  const confirmed = contracts.filter(c => ["confirmed", "loading", "completed"].includes(c.status)).length;
-  const pending = contracts.filter(c => ["draft", "pending"].includes(c.status)).length;
-  const loadingCount = contracts.filter(c => c.status === "loading").length;
-  const completedCount = contracts.filter(c => c.status === "completed").length;
+function Dashboard({ data, activeModule, switchModule }) {
+  const isNetCotton = activeModule === "net_cotton";
+  const modContracts = data.contracts.filter(c => (c.module || "cotton_seed") === activeModule);
+  const confirmed = modContracts.filter(c => ["confirmed", "loading", "completed"].includes(c.status)).length;
+  const loadingCount = modContracts.filter(c => c.status === "loading").length;
+  const completedCount = modContracts.filter(c => c.status === "completed").length;
   const navigate = useNavigate();
+
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
+  const termsList = isNetCotton ? NET_COTTON_TERMS : COTTON_SEED_TERMS;
 
   return <>
     <PageHeading
-      eyebrow="COTTON SEED WORKSPACE"
-      title="Operations Overview"
-      description="Track the exact 4-step workflow: Step 1 Contract Details, Step 2 Buyer Confirmation, Step 3 Loading Details, and Step 4 Gate Pass."
+      eyebrow={`MODULE ${isNetCotton ? "2: NET COTTON (COTTON BALES)" : "1: COTTON SEED"}`}
+      title={`${moduleName} Operations Overview`}
+      description={`Exact 4-step workflow from the ${moduleName} specification PDF.`}
       action={<button className="button primary" onClick={() => navigate("/contracts/new")}><Plus size={17}/> Step 1: New Contract</button>}
     />
 
     <div className="stat-grid">
-      <StatCard label="Total Contract Quantity" value={`${totalQuintals.toLocaleString("en-IN")} qtl`} change="Contracted Cotton Seed" tone="amber" icon={<FileText size={20}/>} onClick={() => navigate("/contracts")}/>
-      <StatCard label="Step 2: Sent to Buyer" value={confirmed} change="Active confirmations" tone="blue" icon={<Send size={20}/>} onClick={() => navigate("/confirmations")}/>
-      <StatCard label="Step 3: Loading" value={loadingCount} change="Vehicles in loading" tone="amber" icon={<Truck size={20}/>} onClick={() => navigate("/loading")}/>
+      <StatCard label="Total Contracts" value={modContracts.length} change={`Active in ${moduleName}`} tone="blue" icon={<FileText size={20}/>} onClick={() => navigate("/contracts")}/>
+      <StatCard label="Step 2: Sent to Buyer" value={confirmed} change="Confirmations sent" tone="blue" icon={<Send size={20}/>} onClick={() => navigate("/confirmations")}/>
+      <StatCard label="Step 3: Loading" value={loadingCount} change="In loading stage" tone="amber" icon={<Truck size={20}/>} onClick={() => navigate("/loading")}/>
       <StatCard label="Step 4: Gate Passes" value={completedCount} change="Dispatched with pass" tone="green" icon={<PackageCheck size={20}/>} onClick={() => navigate("/gate-passes")}/>
     </div>
 
@@ -274,8 +370,8 @@ function Dashboard({ data }) {
     <section className="panel" style={{ marginTop: 22 }}>
       <div className="panel-heading">
         <div>
-          <h2>4-Step Workflow Pipeline</h2>
-          <p>Follows the exact specification document</p>
+          <h2>4-Step Workflow Pipeline ({moduleName})</h2>
+          <p>Strictly matches the {moduleName} specification document</p>
         </div>
       </div>
       <div className="workflow-stepper-grid">
@@ -284,8 +380,8 @@ function Dashboard({ data }) {
             <span className="step-badge">STEP 1</span>
             <FilePlus2 size={20} className="step-icon text-blue"/>
           </div>
-          <h3>Cotton Seed Contract Details</h3>
-          <p>Enter the exact 13 fields: Date, Contract No, Party, GST, Address, Contact, Qty, Cotton Seed, Delivery & Payment conditions, Rate, Packing, Address.</p>
+          <h3>{moduleName} Contract Details</h3>
+          <p>{isNetCotton ? "15 fields: Date, Contract No, Party, GST, Address, Contact, Broker Name & Firm Name, PR No, Lot No, Qty, Cotton Bales, Delivery & Payment conditions, Rate per Candy, Address." : "13 fields: Date, Contract No, Party, GST, Address, Contact, Qty, Cotton Seed, Delivery & Payment conditions, Rate per Quintals, Packing (Loose/Bags), Address."}</p>
           <div className="step-action-row"><span>New Contract</span><ArrowRight size={14}/></div>
         </div>
 
@@ -295,7 +391,7 @@ function Dashboard({ data }) {
             <Send size={20} className="step-icon text-purple"/>
           </div>
           <h3>Generate Contract & Send to Buyer</h3>
-          <p>Generate confirmation PDF containing 13 details, 5 terms, and 3 signatures. Send to buyer via MAIL or WHAT (WhatsApp).</p>
+          <p>Generate confirmation PDF with details, 5 terms, and 3 signatures. Send to buyer via MAIL or WHAT (WhatsApp).</p>
           <div className="step-action-row"><span>Send to Buyer</span><ArrowRight size={14}/></div>
         </div>
 
@@ -305,7 +401,7 @@ function Dashboard({ data }) {
             <Truck size={20} className="step-icon text-amber"/>
           </div>
           <h3>Loading Details as per Contract</h3>
-          <p>Record Truck/tempo number, Net weight quintals, Driver license no, Transport no, Transport name, and LR no.</p>
+          <p>{isNetCotton ? "7 loading fields: Truck/tempo, Net weight, Driver license, Driver contact, Transport no, Transporter name, and LR no." : "6 loading fields: Truck/tempo, Net weight, Driver license, Transport no, Transport name, and Lr no."}</p>
           <div className="step-action-row"><span>Record Loading</span><ArrowRight size={14}/></div>
         </div>
 
@@ -315,7 +411,7 @@ function Dashboard({ data }) {
             <PackageCheck size={20} className="step-icon text-green"/>
           </div>
           <h3>Generate Gate Pass With All Details</h3>
-          <p>Consolidate all Contract details and Loading details into an official Gate Pass document for factory dispatch.</p>
+          <p>Consolidate all Contract details and Loading details into an official Gate Pass document.</p>
           <div className="step-action-row"><span>View Gate Passes</span><ArrowRight size={14}/></div>
         </div>
       </div>
@@ -324,19 +420,19 @@ function Dashboard({ data }) {
     <div className="dashboard-grid" style={{ marginTop: 22 }}>
       <section className="panel">
         <div className="panel-heading">
-          <div><h2>Recent Contracts</h2><p>Latest Cotton Seed contracts entered</p></div>
+          <div><h2>Recent {moduleName} Contracts</h2><p>Latest entries registered</p></div>
           <button className="text-button" onClick={() => navigate("/contracts")}>View all <ArrowRight size={14}/></button>
         </div>
-        <ContractTable contracts={contracts.slice(0, 5)} onOpen={id => navigate(`/contracts/${id}`)} compact/>
+        <ContractTable contracts={modContracts.slice(0, 5)} onOpen={id => navigate(`/contracts/${id}`)} isNetCotton={isNetCotton} compact/>
       </section>
 
       <section className="panel helper-panel">
         <div className="panel-heading">
-          <div><h2>Terms & Conditions</h2><p>5 Terms as per specification</p></div>
+          <div><h2>Terms & Conditions</h2><p>5 Terms as per {moduleName} PDF</p></div>
           <ShieldCheck size={20}/>
         </div>
         <ol style={{ paddingLeft: 18, fontSize: 11.5, lineHeight: 1.7, color: "#475569", margin: "0 0 16px" }}>
-          {SOURCE_TERMS.map((t, idx) => <li key={idx} style={{ marginBottom: 6 }}>{t}</li>)}
+          {termsList.map((t, idx) => <li key={idx} style={{ marginBottom: 6 }}>{t}</li>)}
         </ol>
         <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, fontSize: 11, color: "#64748b" }}>
           <strong>Signatures Required:</strong> Broker Sign & Stamp, Buyer Sign & Stamp, Seller Sign & Stamp.
@@ -346,35 +442,39 @@ function Dashboard({ data }) {
   </>;
 }
 
-function ContractRegister({ data }) {
+function ContractRegister({ data, activeModule }) {
+  const isNetCotton = activeModule === "net_cotton";
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   const filtered = useMemo(() => {
-    return data.contracts.filter(c => {
-      const matchFilter = filter === "all" ? true : c.status === filter;
-      const q = search.toLowerCase();
-      const matchSearch = !q ||
-        (c.party_name && c.party_name.toLowerCase().includes(q)) ||
-        (c.contract_number && c.contract_number.toLowerCase().includes(q)) ||
-        (c.delivery_address && c.delivery_address.toLowerCase().includes(q));
-      return matchFilter && matchSearch;
-    });
-  }, [data.contracts, filter, search]);
+    return data.contracts
+      .filter(c => (c.module || "cotton_seed") === activeModule)
+      .filter(c => {
+        const matchFilter = filter === "all" ? true : c.status === filter;
+        const q = search.toLowerCase();
+        const matchSearch = !q ||
+          (c.party_name && c.party_name.toLowerCase().includes(q)) ||
+          (c.contract_number && c.contract_number.toLowerCase().includes(q)) ||
+          (c.delivery_address && c.delivery_address.toLowerCase().includes(q));
+        return matchFilter && matchSearch;
+      });
+  }, [data.contracts, activeModule, filter, search]);
 
   return <>
     <PageHeading
-      eyebrow="REGISTER"
-      title="Contract Register"
-      description="View and manage all Cotton Seed contracts across the 4-step lifecycle."
+      eyebrow={`MODULE: ${moduleName.toUpperCase()}`}
+      title={`${moduleName} Contract Register`}
+      description={`View and manage all ${moduleName} contracts across the 4-step lifecycle.`}
       action={<button className="button primary" onClick={() => navigate("/contracts/new")}><Plus size={17}/> Step 1: New Contract</button>}
     />
 
     <div className="filter-bar">
       <div className="search-box">
         <Search size={16}/>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by contract number, party, or address…"/>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${moduleName} contracts…`}/>
       </div>
       <div className="filter-pills">
         {["all", "draft", "confirmed", "loading", "completed"].map(s => (
@@ -387,37 +487,41 @@ function ContractRegister({ data }) {
 
     <section className="panel">
       {filtered.length ? (
-        <ContractTable contracts={filtered} onOpen={id => navigate(`/contracts/${id}`)}/>
+        <ContractTable contracts={filtered} onOpen={id => navigate(`/contracts/${id}`)} isNetCotton={isNetCotton}/>
       ) : (
         <div className="empty-state">
           <FileText size={28}/>
-          <strong>No contracts found</strong>
-          <span>Try adjusting your search or create a new contract.</span>
+          <strong>No {moduleName} contracts found</strong>
+          <span>Click Step 1: New Contract to create one.</span>
         </div>
       )}
     </section>
   </>;
 }
 
-function ConfirmationsPage({ data }) {
+function ConfirmationsPage({ data, activeModule }) {
+  const isNetCotton = activeModule === "net_cotton";
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
+  const modContracts = data.contracts.filter(c => (c.module || "cotton_seed") === activeModule);
   const navigate = useNavigate();
+
   return <>
     <PageHeading
-      eyebrow="STEP 02 / DISPATCH"
+      eyebrow={`STEP 02 / ${moduleName.toUpperCase()}`}
       title="Step 2: Send to Buyer"
-      description="Generate the contract after confirmation and send to the buyer via WhatsApp ('WHAT') or Email ('MAIL')."
+      description={`Generate the ${moduleName} contract after confirmation and send to the buyer via WhatsApp ('WHAT') or Email ('MAIL').`}
     />
     <section className="panel">
       <div className="panel-heading">
         <div><h2>Contracts for Confirmation</h2><p>Select any contract to review and dispatch to Buyer</p></div>
         <Send size={19}/>
       </div>
-      {data.contracts.length ? (
-        <ContractTable contracts={data.contracts} onOpen={id => navigate(`/contracts/${id}?step=2`)}/>
+      {modContracts.length ? (
+        <ContractTable contracts={modContracts} onOpen={id => navigate(`/contracts/${id}?step=2`)} isNetCotton={isNetCotton}/>
       ) : (
         <div className="empty-state">
           <Send size={26}/>
-          <strong>No contracts available</strong>
+          <strong>No {moduleName} contracts available</strong>
           <span>Create a contract first in Step 1.</span>
         </div>
       )}
@@ -425,7 +529,7 @@ function ConfirmationsPage({ data }) {
   </>;
 }
 
-function ContractTable({ contracts, onOpen, compact = false }) {
+function ContractTable({ contracts, onOpen, isNetCotton = false, compact = false }) {
   return (
     <div className="table-scroll">
       <table className="data-table">
@@ -435,8 +539,8 @@ function ContractTable({ contracts, onOpen, compact = false }) {
             <th>Party Name</th>
             <th>Date</th>
             <th>Quantity</th>
-            <th>Rate / Quintal</th>
-            <th>Packing</th>
+            {isNetCotton ? <th>Rate / Candy</th> : <th>Rate / Quintal</th>}
+            {isNetCotton ? <th>PR / Lot</th> : <th>Packing</th>}
             <th>Status</th>
             {!compact && <th/>}
           </tr>
@@ -444,12 +548,20 @@ function ContractTable({ contracts, onOpen, compact = false }) {
         <tbody>
           {contracts.map(c => (
             <tr key={c.id} onClick={() => onOpen && onOpen(c.id)} className={onOpen ? "clickable-row" : ""}>
-              <td><strong className="contract-code">{c.contract_number || "Draft"}</strong><small className="cell-sub">{c.commodity || "COTTON SEED"}</small></td>
+              <td><strong className="contract-code">{c.contract_number || "Draft"}</strong><small className="cell-sub">{c.commodity}</small></td>
               <td><span className="party-cell">{c.party_name || "—"}</span></td>
               <td>{c.contract_date || "—"}</td>
-              <td><strong>{c.quantity_quintals ? `${c.quantity_quintals} Quintals` : "—"}</strong></td>
-              <td>{c.rate_per_quintal ? `₹${Number(c.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</td>
-              <td><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
+              <td><strong>{c.quantity || "—"}</strong></td>
+              {isNetCotton ? (
+                <td>{c.rate_per_candy ? `₹${Number(c.rate_per_candy).toLocaleString("en-IN")}` : "—"}</td>
+              ) : (
+                <td>{c.rate_per_quintal ? `₹${Number(c.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</td>
+              )}
+              {isNetCotton ? (
+                <td><small style={{ fontWeight: 600, color: "#64748b" }}>{c.pr_no ? `PR: ${c.pr_no}` : ""} {c.lot_no ? `| Lot: ${c.lot_no}` : ""}</small></td>
+              ) : (
+                <td><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
+              )}
               <td><StatusBadge status={c.status}/></td>
               {!compact && <td><ArrowRight size={16} className="row-arrow"/></td>}
             </tr>
@@ -467,14 +579,21 @@ function StatusBadge({ status }) {
 
 // ==========================================
 // STEP 1 & STEP 2: CONTRACT CREATION WIZARD
-// (Strictly the 13 fields from Step 1 of the PDF)
+// Dynamically renders exact fields based on activeModule
 // ==========================================
-function ContractForm({ data }) {
+function ContractForm({ data, activeModule }) {
+  const isNetCotton = activeModule === "net_cotton";
   const [formStep, setFormStep] = useState(1);
-  const [form, setForm] = useState(blankContract);
+  const [form, setForm] = useState(() => (isNetCotton ? { ...blankNetCotton } : { ...blankCottonSeed }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setForm(isNetCotton ? { ...blankNetCotton } : { ...blankCottonSeed });
+    setFormStep(1);
+  }, [activeModule]);
+
   const set = (key, value) => setForm(old => ({ ...old, [key]: value }));
 
   const validateStep1 = () => {
@@ -483,16 +602,20 @@ function ContractForm({ data }) {
       setError("Please enter 3. PARTY NAME before proceeding.");
       return false;
     }
-    if (!form.quantity_quintals) {
-      setError("Please enter 7. QUANTITY in Quintals.");
+    if (!form.quantity) {
+      setError("Please enter QUANTITY.");
       return false;
     }
-    if (!form.rate_per_quintal) {
+    if (isNetCotton && !form.rate_per_candy) {
+      setError("Please enter 14. RATE PER CANDY.");
+      return false;
+    }
+    if (!isNetCotton && !form.rate_per_quintal) {
       setError("Please enter 11. RATE PER QUINTALS.");
       return false;
     }
     if (!form.delivery_address?.trim()) {
-      setError("Please enter 13. DELIVERY ADDRESS.");
+      setError("Please enter DELIVERY ADDRESS.");
       return false;
     }
     return true;
@@ -510,11 +633,13 @@ function ContractForm({ data }) {
     setSaving(true);
     setError("");
 
-    const generatedNumber = form.contract_number?.trim() || `CS-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const prefix = isNetCotton ? "NC" : "CS";
+    const generatedNumber = form.contract_number?.trim() || `${prefix}-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
     const finalForm = {
       ...form,
       contract_number: generatedNumber,
-      commodity: "COTTON SEED"
+      module: activeModule,
+      commodity: isNetCotton ? "COTTON BALES" : "COTTON SEED"
     };
 
     if (data.demoMode) {
@@ -550,16 +675,15 @@ function ContractForm({ data }) {
     setSaving(false);
   }
 
-  const calcQty = Number(form.quantity_quintals || 0);
-  const calcRate = Number(form.rate_per_quintal || 0);
-  const totalVal = calcQty * calcRate;
+  const termsList = isNetCotton ? NET_COTTON_TERMS : COTTON_SEED_TERMS;
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
 
   return <>
     <button className="back-link" onClick={() => navigate("/contracts")}><ArrowLeft size={16}/> Back to contract register</button>
     <PageHeading
-      eyebrow={formStep === 1 ? "STEP 1" : "STEP 2"}
-      title={formStep === 1 ? "Step 1: COTTON SEED Contract Details" : "Step 2: Generate Contract & Send to Buyer"}
-      description={formStep === 1 ? "Enter the exact 13 fields from the specification document." : "Review details, download contract PDF, and send to buyer via WhatsApp or Mail."}
+      eyebrow={`MODULE: ${moduleName.toUpperCase()} · STEP ${formStep}`}
+      title={formStep === 1 ? `Step 1: ${moduleName} Contract Details` : `Step 2: Generate Contract & Send to Buyer`}
+      description={formStep === 1 ? `Enter the exact ${isNetCotton ? "15" : "13"} fields from the ${moduleName} specification document.` : `Review terms, download contract PDF, and send to buyer via WhatsApp or Mail.`}
     />
 
     {/* Stepper Header */}
@@ -568,7 +692,7 @@ function ContractForm({ data }) {
         <div className="stepper-num">1</div>
         <div className="stepper-label">
           <strong>Step 1: Contract Details</strong>
-          <span>Exact 13 items from PDF</span>
+          <span>Exact {isNetCotton ? "15" : "13"} fields from PDF</span>
         </div>
       </button>
       <button type="button" className={`stepper-tab ${formStep === 2 ? "active" : ""}`} onClick={() => { if (validateStep1()) setFormStep(2); }}>
@@ -583,7 +707,7 @@ function ContractForm({ data }) {
     {error && <div className="form-error" style={{ marginBottom: 18 }}>{error}</div>}
 
     {formStep === 1 ? (
-      /* STEP 1: EXACT 13 ITEMS FROM PDF */
+      /* STEP 1: FORM WITH EXACT PDF FIELDS */
       <form onSubmit={goToContract2}>
         <div className="form-layout">
           <div className="form-main">
@@ -591,67 +715,108 @@ function ContractForm({ data }) {
               <div className="form-section-heading">
                 <span className="form-section-icon"><FileText size={18}/></span>
                 <div>
-                  <h2>COTTON SEED Contract Details</h2>
-                  <p>Items 1 to 13 as specified in the PDF</p>
+                  <h2>{moduleName} Contract Details</h2>
+                  <p>Exact fields specified in {moduleName} PDF</p>
                 </div>
                 <span className="required-note">* Required</span>
               </div>
 
-              <div className="field-grid">
-                <Field label="1. DATE" required>
-                  <input type="date" required value={form.contract_date} onChange={e => set("contract_date", e.target.value)}/>
-                </Field>
-                <Field label="2. CONTRACT NUMBER ." hint="Leave blank to auto-generate (e.g. CS-2026-003)">
-                  <input value={form.contract_number} onChange={e => set("contract_number", e.target.value)} placeholder="e.g. CS-2026-003"/>
-                </Field>
-                <Field label="3. PARTY NAME" required>
-                  <input required value={form.party_name} onChange={e => set("party_name", e.target.value)} placeholder="Enter Party Name"/>
-                </Field>
-                <Field label="4. GST NUMBER">
-                  <input value={form.gst_number} onChange={e => set("gst_number", e.target.value)} placeholder="GST Number"/>
-                </Field>
-                <Field label="5. ADDREESS" wide>
-                  <textarea rows="2" value={form.party_address} onChange={e => set("party_address", e.target.value)} placeholder="Full Party Address"/>
-                </Field>
-                <Field label="6. CONTACT NO.">
-                  <input value={form.contact_number} onChange={e => set("contact_number", e.target.value)} placeholder="+91 98765 43210"/>
-                </Field>
-                <Field label="7. QUANTITY" required hint="Quantity in Quintals">
-                  <input type="number" min="0.01" step="0.01" required value={form.quantity_quintals} onChange={e => set("quantity_quintals", e.target.value)} placeholder="Quantity (Quintals)"/>
-                </Field>
-                <Field label="8. COMMODITY : COTTON SEED" required>
-                  <input value="COTTON SEED" readOnly style={{ background: "#f8fafc", fontWeight: 700, color: "#1e293b" }}/>
-                </Field>
-                <Field label="9. DELIVERY CONDITION" required>
-                  <input required value={form.delivery_condition} onChange={e => set("delivery_condition", e.target.value)} placeholder="e.g. Ready Delivery / Ex-Factory"/>
-                </Field>
-                <Field label="10. PAYMENT CONDITION" required>
-                  <input required value={form.payment_condition} onChange={e => set("payment_condition", e.target.value)} placeholder="e.g. Immediate on delivery / RTGS"/>
-                </Field>
-                <Field label="11. RATE PER QUINTALS" required hint="Rate in ₹ per Quintal">
-                  <input type="number" min="0" step="0.01" required value={form.rate_per_quintal} onChange={e => set("rate_per_quintal", e.target.value)} placeholder="e.g. 3650.00"/>
-                </Field>
-                <Field label="12. PACKING TYPE : LOOSE/BAGS" required>
-                  <select value={form.packing_type} onChange={e => set("packing_type", e.target.value)}>
-                    <option value="LOOSE">LOOSE</option>
-                    <option value="BAGS">BAGS</option>
-                  </select>
-                </Field>
-                <Field label="13. DELIVERY ADDRESS" required wide>
-                  <textarea required rows="2" value={form.delivery_address} onChange={e => set("delivery_address", e.target.value)} placeholder="Delivery destination address"/>
-                </Field>
-              </div>
-
-              {/* Live Calculation */}
-              <div style={{ marginTop: 18, padding: "16px 20px", background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                <div>
-                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.8, color: "#166534", fontWeight: 700, display: "block" }}>Total Valuation</span>
-                  <strong style={{ fontSize: 20, color: "#14532d", fontWeight: 800 }}>₹{totalVal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</strong>
+              {isNetCotton ? (
+                /* MODULE 2: NET COTTON (15 EXACT FIELDS) */
+                <div className="field-grid">
+                  <Field label="1. DATE" required>
+                    <input type="date" required value={form.contract_date} onChange={e => set("contract_date", e.target.value)}/>
+                  </Field>
+                  <Field label="2. CONTRACT NUMBER ." hint="Auto-generated if left blank">
+                    <input value={form.contract_number} onChange={e => set("contract_number", e.target.value)} placeholder="e.g. NC-2026-003"/>
+                  </Field>
+                  <Field label="3. PARTY NAME" required>
+                    <input required value={form.party_name} onChange={e => set("party_name", e.target.value)} placeholder="Enter Party Name"/>
+                  </Field>
+                  <Field label="4. GST NUMBER">
+                    <input value={form.gst_number} onChange={e => set("gst_number", e.target.value)} placeholder="GST Number"/>
+                  </Field>
+                  <Field label="5. ADDREESS" wide>
+                    <textarea rows="2" value={form.party_address} onChange={e => set("party_address", e.target.value)} placeholder="Full Party Address"/>
+                  </Field>
+                  <Field label="6. CONTACT NO.">
+                    <input value={form.contact_number} onChange={e => set("contact_number", e.target.value)} placeholder="+91 98765 43210"/>
+                  </Field>
+                  <Field label="7. BROKER NAME AND FIRM NAME" wide>
+                    <input value={form.broker_name_and_firm_name || ""} onChange={e => set("broker_name_and_firm_name", e.target.value)} placeholder="e.g. Shrenik Shah (Shrenik Cotton Brokers)"/>
+                  </Field>
+                  <Field label="8. PR NO .">
+                    <input value={form.pr_no || ""} onChange={e => set("pr_no", e.target.value)} placeholder="e.g. PR-105"/>
+                  </Field>
+                  <Field label="9. LOT NO.">
+                    <input value={form.lot_no || ""} onChange={e => set("lot_no", e.target.value)} placeholder="e.g. LOT-60"/>
+                  </Field>
+                  <Field label="10. QUANTITY" required hint="e.g. 100 Bales (170 qtl)">
+                    <input required value={form.quantity} onChange={e => set("quantity", e.target.value)} placeholder="e.g. 100 Bales (170 qtl)"/>
+                  </Field>
+                  <Field label="11. COMMODITY : COTTON BALES" required>
+                    <input value="COTTON BALES" readOnly style={{ background: "#f8fafc", fontWeight: 700, color: "#1e293b" }}/>
+                  </Field>
+                  <Field label="12. DELIVERY CONDITION" required>
+                    <input required value={form.delivery_condition} onChange={e => set("delivery_condition", e.target.value)} placeholder="e.g. Ready Delivery / Ex-Factory / FOR"/>
+                  </Field>
+                  <Field label="13. PAYMENT CONDITION" required>
+                    <input required value={form.payment_condition} onChange={e => set("payment_condition", e.target.value)} placeholder="e.g. Immediate / RTGS / 7 days"/>
+                  </Field>
+                  <Field label="14. RATE PER CANDY" required hint="Rate in ₹ per Candy">
+                    <input type="number" min="0" step="1" required value={form.rate_per_candy} onChange={e => set("rate_per_candy", e.target.value)} placeholder="e.g. 58500"/>
+                  </Field>
+                  <Field label="15. DELIVERY ADDRESS" required wide>
+                    <textarea required rows="2" value={form.delivery_address} onChange={e => set("delivery_address", e.target.value)} placeholder="Delivery destination address"/>
+                  </Field>
                 </div>
-                <div style={{ fontSize: 12, color: "#15803d" }}>
-                  {calcQty > 0 && calcRate > 0 ? `${calcQty} Quintals × ₹${calcRate}/qtl` : "Enter Quantity & Rate to see total"}
+              ) : (
+                /* MODULE 1: COTTON SEED (13 EXACT FIELDS) */
+                <div className="field-grid">
+                  <Field label="1. DATE" required>
+                    <input type="date" required value={form.contract_date} onChange={e => set("contract_date", e.target.value)}/>
+                  </Field>
+                  <Field label="2. CONTRACT NUMBER ." hint="Auto-generated if left blank">
+                    <input value={form.contract_number} onChange={e => set("contract_number", e.target.value)} placeholder="e.g. CS-2026-003"/>
+                  </Field>
+                  <Field label="3. PARTY NAME" required>
+                    <input required value={form.party_name} onChange={e => set("party_name", e.target.value)} placeholder="Enter Party Name"/>
+                  </Field>
+                  <Field label="4. GST NUMBER">
+                    <input value={form.gst_number} onChange={e => set("gst_number", e.target.value)} placeholder="GST Number"/>
+                  </Field>
+                  <Field label="5. ADDREESS" wide>
+                    <textarea rows="2" value={form.party_address} onChange={e => set("party_address", e.target.value)} placeholder="Full Party Address"/>
+                  </Field>
+                  <Field label="6. CONTACT NO.">
+                    <input value={form.contact_number} onChange={e => set("contact_number", e.target.value)} placeholder="+91 98765 43210"/>
+                  </Field>
+                  <Field label="7. QUANTITY" required hint="Quantity in Quintals">
+                    <input type="number" min="0.01" step="0.01" required value={form.quantity} onChange={e => set("quantity", e.target.value)} placeholder="Quantity in Quintals"/>
+                  </Field>
+                  <Field label="8. COMMODITY : COTTON SEED" required>
+                    <input value="COTTON SEED" readOnly style={{ background: "#f8fafc", fontWeight: 700, color: "#1e293b" }}/>
+                  </Field>
+                  <Field label="9. DELIVERY CONDITION" required>
+                    <input required value={form.delivery_condition} onChange={e => set("delivery_condition", e.target.value)} placeholder="e.g. Ready Delivery / Ex-Factory"/>
+                  </Field>
+                  <Field label="10. PAYMENT CONDITION" required>
+                    <input required value={form.payment_condition} onChange={e => set("payment_condition", e.target.value)} placeholder="e.g. Immediate on delivery / RTGS"/>
+                  </Field>
+                  <Field label="11. RATE PER QUINTALS" required hint="Rate in ₹ per Quintal">
+                    <input type="number" min="0" step="0.01" required value={form.rate_per_quintal} onChange={e => set("rate_per_quintal", e.target.value)} placeholder="e.g. 3650.00"/>
+                  </Field>
+                  <Field label="12. PACKING TYPE :LOOSE/BAGS" required>
+                    <select value={form.packing_type} onChange={e => set("packing_type", e.target.value)}>
+                      <option value="LOOSE">LOOSE</option>
+                      <option value="BAGS">BAGS</option>
+                    </select>
+                  </Field>
+                  <Field label="13. DELIVERY ADDRESS" required wide>
+                    <textarea required rows="2" value={form.delivery_address} onChange={e => set("delivery_address", e.target.value)} placeholder="Delivery destination address"/>
+                  </Field>
                 </div>
-              </div>
+              )}
             </section>
           </div>
 
@@ -661,14 +826,17 @@ function ContractForm({ data }) {
                 <div className="preview-doc-icon"><FileCheck2 size={22}/></div>
                 <span className="preview-label">STEP 1 CHECKLIST</span>
               </div>
-              <h3>13 Items Ready</h3>
+              <h3>{moduleName} Summary</h3>
               <p>Proceed to Step 2 to generate the contract PDF and send to the buyer.</p>
               <div className="preview-line"/>
               <div className="preview-row"><span>Party</span><strong>{form.party_name || "—"}</strong></div>
-              <div className="preview-row"><span>Commodity</span><strong>COTTON SEED</strong></div>
-              <div className="preview-row"><span>Quantity</span><strong>{form.quantity_quintals ? `${form.quantity_quintals} qtl` : "—"}</strong></div>
-              <div className="preview-row"><span>Rate</span><strong>{form.rate_per_quintal ? `₹${form.rate_per_quintal}/qtl` : "—"}</strong></div>
-              <div className="preview-row"><span>Packing</span><strong>{form.packing_type}</strong></div>
+              <div className="preview-row"><span>Commodity</span><strong>{isNetCotton ? "COTTON BALES" : "COTTON SEED"}</strong></div>
+              <div className="preview-row"><span>Quantity</span><strong>{form.quantity || "—"}</strong></div>
+              {isNetCotton ? (
+                <div className="preview-row"><span>Rate/Candy</span><strong>{form.rate_per_candy ? `₹${form.rate_per_candy}` : "—"}</strong></div>
+              ) : (
+                <div className="preview-row"><span>Rate/Qtl</span><strong>{form.rate_per_quintal ? `₹${form.rate_per_quintal}` : "—"}</strong></div>
+              )}
               <button type="submit" className="button primary full" style={{ marginTop: 16 }}>
                 Next: Step 2 Send to Buyer <ArrowRight size={16}/>
               </button>
@@ -677,36 +845,43 @@ function ContractForm({ data }) {
         </div>
       </form>
     ) : (
-      /* STEP 2: REVIEW, GENERATE & SEND TO BUYER */
+      /* STEP 2: REVIEW & SEND TO BUYER */
       <div className="form-layout">
         <div className="form-main">
           <section className="panel" style={{ padding: 22, marginBottom: 20 }}>
             <div className="panel-heading" style={{ padding: 0, marginBottom: 14 }}>
               <div>
                 <h2>Step 2: Generate the contract after conformation send to the buyer</h2>
-                <p>Verify all 13 details and the 5 legal terms before saving and dispatching</p>
+                <p>Verify details and 5 terms before generating official PDF and dispatching</p>
               </div>
             </div>
 
             <div className="detail-fields" style={{ marginBottom: 20 }}>
               <Detail label="1. DATE" value={form.contract_date}/>
-              <Detail label="2. CONTRACT NUMBER" value={form.contract_number || "Auto-generated on save"}/>
+              <Detail label="2. CONTRACT NUMBER ." value={form.contract_number || "Auto-generated on save"}/>
               <Detail label="3. PARTY NAME" value={form.party_name}/>
               <Detail label="4. GST NUMBER" value={form.gst_number}/>
               <Detail label="5. ADDREESS" value={form.party_address}/>
               <Detail label="6. CONTACT NO." value={form.contact_number}/>
-              <Detail label="7. QUANTITY" value={`${form.quantity_quintals} QUINTALS`}/>
-              <Detail label="8. COMMODITY" value="COTTON SEED"/>
-              <Detail label="9. DELIVERY CONDITION" value={form.delivery_condition}/>
-              <Detail label="10. PAYMENT CONDITION" value={form.payment_condition}/>
-              <Detail label="11. RATE PER QUINTALS" value={`₹${form.rate_per_quintal} / Quintal`}/>
-              <Detail label="12. PACKING TYPE" value={form.packing_type}/>
-              <Detail label="13. DELIVERY ADDRESS" value={form.delivery_address}/>
+              {isNetCotton && <Detail label="7. BROKER NAME AND FIRM NAME" value={form.broker_name_and_firm_name}/>}
+              {isNetCotton && <Detail label="8. PR NO ." value={form.pr_no}/>}
+              {isNetCotton && <Detail label="9. LOT NO." value={form.lot_no}/>}
+              <Detail label={isNetCotton ? "10. QUANTITY" : "7. QUANTITY"} value={form.quantity}/>
+              <Detail label={isNetCotton ? "11. COMMODITY" : "8. COMMODITY"} value={isNetCotton ? "COTTON BALES" : "COTTON SEED"}/>
+              <Detail label={isNetCotton ? "12. DELIVERY CONDITION" : "9. DELIVERY CONDITION"} value={form.delivery_condition}/>
+              <Detail label={isNetCotton ? "13. PAYMENT CONDITION" : "10. PAYMENT CONDITION"} value={form.payment_condition}/>
+              {isNetCotton ? (
+                <Detail label="14. RATE PER CANDY" value={form.rate_per_candy ? `₹${form.rate_per_candy} / Candy` : "—"}/>
+              ) : (
+                <Detail label="11. RATE PER QUINTALS" value={form.rate_per_quintal ? `₹${form.rate_per_quintal} / Quintal` : "—"}/>
+              )}
+              {!isNetCotton && <Detail label="12. PACKING TYPE :LOOSE/BAGS" value={form.packing_type}/>}
+              <Detail label={isNetCotton ? "15. DELIVERY ADDRESS" : "13. DELIVERY ADDRESS"} value={form.delivery_address}/>
             </div>
 
             <h3 style={{ fontSize: 13, marginBottom: 10, color: "#1e293b" }}>Terms & Conditions :</h3>
             <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, lineHeight: 1.8, color: "#475569" }}>
-              {SOURCE_TERMS.map((t, idx) => <li key={idx} style={{ marginBottom: 6 }}>{t}</li>)}
+              {termsList.map((t, idx) => <li key={idx} style={{ marginBottom: 6 }}>{t}</li>)}
             </ol>
 
             <div style={{ marginTop: 18, borderTop: "1px solid #e2e8f0", paddingTop: 14, fontSize: 11, color: "#64748b" }}>
@@ -731,7 +906,7 @@ function ContractForm({ data }) {
               <span className="preview-label">STEP 2 READY</span>
             </div>
             <h3>Confirmation Dispatch</h3>
-            <p>Once saved, the official contract PDF will be downloaded and you will proceed to the dispatch screen.</p>
+            <p>Once saved, the official contract PDF will be downloaded and you can send it to the buyer via WhatsApp or Email.</p>
             <button type="button" className="button primary full" disabled={saving} onClick={saveContract} style={{ marginTop: 16 }}>
               <Check size={16}/> {saving ? "Saving…" : "Confirm & Save"}
             </button>
@@ -753,8 +928,7 @@ function Field({ label, required, hint, wide, children }) {
 }
 
 // ==========================================
-// 4-STEP CONTRACT LIFECYCLE CONTROLLER
-// (Contract Details -> Step 2 Send -> Step 3 Loading -> Step 4 Gate Pass)
+// 4-STEP CONTRACT CONTROLLER (DETAILS -> SEND -> LOADING -> GATE PASS)
 // ==========================================
 function ContractDetail({ data }) {
   const location = useLocation();
@@ -762,7 +936,11 @@ function ContractDetail({ data }) {
   const contractId = location.pathname.split("/")[2];
   const contract = data.contracts.find(c => String(c.id) === String(contractId));
 
-  const [loading, setLoading] = useState(blankLoading);
+  const isNetCotton = contract?.module === "net_cotton";
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
+  const termsList = isNetCotton ? NET_COTTON_TERMS : COTTON_SEED_TERMS;
+
+  const [loading, setLoading] = useState(blankLoadingDetails);
   const [message, setMessage] = useState("");
 
   const searchParams = new URLSearchParams(location.search);
@@ -797,7 +975,7 @@ function ContractDetail({ data }) {
     navigate(`/contracts/${contract.id}?step=${s}`, { replace: true });
   };
 
-  // Step 3: Save Loading Details (6 fields from PDF)
+  // Step 3: Save Loading Details (6 fields for Cotton Seed; 7 fields for Net Cotton)
   async function saveLoading(e) {
     if (e) e.preventDefault();
     setMessage("");
@@ -830,7 +1008,8 @@ function ContractDetail({ data }) {
       return;
     }
 
-    const gateNum = "GP-2026-" + Math.floor(1000 + Math.random() * 9000);
+    const prefix = isNetCotton ? "GP-NC" : "GP-CS";
+    const gateNum = `${prefix}-2026-` + Math.floor(1000 + Math.random() * 9000);
 
     if (data.demoMode) {
       generateGatePassPdf(contract, loading, gateNum);
@@ -859,19 +1038,20 @@ function ContractDetail({ data }) {
       return;
     }
 
-    const text = `*Shree Jagdamba - Cotton Seed Contract Confirmation*\n` +
+    const days = isNetCotton ? "2 days" : "1 days";
+    const text = `*Shree Jagdamba - ${moduleName} Contract Confirmation*\n` +
       `Contract No: ${contract.contract_number}\n` +
       `Party: ${contract.party_name}\n` +
-      `Commodity: COTTON SEED\n` +
-      `Quantity: ${contract.quantity_quintals} Quintals\n` +
-      `Rate: INR ${contract.rate_per_quintal} per Quintal\n` +
-      `Packing: ${contract.packing_type}\n` +
+      `Commodity: ${contract.commodity}\n` +
+      (isNetCotton ? `PR No: ${contract.pr_no || "—"} | Lot No: ${contract.lot_no || "—"}\n` : "") +
+      `Quantity: ${contract.quantity}\n` +
+      (isNetCotton ? `Rate: INR ${contract.rate_per_candy} per Candy\n` : `Rate: INR ${contract.rate_per_quintal} per Quintal\n`) +
       `Delivery: ${contract.delivery_address}\n\n` +
-      `Please sign and send contract confirmation within 1 days as agreed.`;
+      `Please sign and send contract confirmation within ${days} as agreed.`;
 
     const target = channel === "whatsapp"
       ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-      : `mailto:?subject=${encodeURIComponent("Cotton Seed Contract Confirmation " + contract.contract_number)}&body=${encodeURIComponent(text + "\n\nPlease find the contract confirmation attached.")}`;
+      : `mailto:?subject=${encodeURIComponent(moduleName + " Contract Confirmation " + contract.contract_number)}&body=${encodeURIComponent(text + "\n\nPlease find the contract confirmation attached.")}`;
 
     window.open(target, "_blank");
 
@@ -886,8 +1066,8 @@ function ContractDetail({ data }) {
     <button className="back-link" onClick={() => navigate("/contracts")}><ArrowLeft size={16}/> Back to contract register</button>
     
     <PageHeading
-      eyebrow={`STEP 0${currentStep} / ${currentStep === 1 ? "CONTRACT DETAILS" : currentStep === 2 ? "SEND TO BUYER" : currentStep === 3 ? "LOADING DETAILS" : "GATE PASS"}`}
-      title={`${contract.contract_number || "Contract"} · ${currentStep === 1 ? "Step 1: Contract Details" : currentStep === 2 ? "Step 2: Send to Buyer" : currentStep === 3 ? "Step 3: Loading Details" : "Step 4: Gate Pass"}`}
+      eyebrow={`MODULE: ${moduleName.toUpperCase()} · STEP 0${currentStep}`}
+      title={`${contract.contract_number || "Contract"} · ${currentStep === 1 ? "Step 1: Details" : currentStep === 2 ? "Step 2: Send to Buyer" : currentStep === 3 ? "Step 3: Loading Details" : "Step 4: Gate Pass"}`}
       description={`${contract.party_name || "Party not specified"} · ${contract.contract_date || "—"}`}
       action={
         <button className="button secondary" onClick={() => generateContractPdf(contract)}>
@@ -902,7 +1082,7 @@ function ContractDetail({ data }) {
         <div className="stepper-num">1</div>
         <div className="stepper-label">
           <strong>Step 1: Details</strong>
-          <span>13 Cotton Seed fields</span>
+          <span>{isNetCotton ? "15 Net Cotton fields" : "13 Cotton Seed fields"}</span>
         </div>
       </button>
       <button type="button" className={`stepper-tab ${currentStep === 2 ? "active" : currentStep > 2 ? "done" : ""}`} onClick={() => setStep(2)}>
@@ -916,26 +1096,26 @@ function ContractDetail({ data }) {
         <div className="stepper-num">3</div>
         <div className="stepper-label">
           <strong>Step 3: Loading</strong>
-          <span>6 dispatch details</span>
+          <span>{isNetCotton ? "7 dispatch details" : "6 dispatch details"}</span>
         </div>
       </button>
       <button type="button" className={`stepper-tab ${currentStep === 4 ? "active" : ""}`} onClick={() => setStep(4)}>
         <div className="stepper-num">4</div>
         <div className="stepper-label">
           <strong>Step 4: Gate Pass</strong>
-          <span>Official pass with all details</span>
+          <span>Pass with all details</span>
         </div>
       </button>
     </div>
 
     {message && <div className={message.includes("saved") || message.includes("generated") || message.includes("sent") ? "success-message" : "form-error"} style={{ marginBottom: 18 }}>{message}</div>}
 
-    {/* STEP 1: COTTON SEED CONTRACT DETAILS (13 ITEMS) */}
+    {/* STEP 1: CONTRACT DETAILS */}
     {currentStep === 1 && (
       <div>
         <section className="panel">
           <div className="panel-heading">
-            <div><h2>COTTON SEED Contract Details</h2><p>Exact 13 fields from the specification document</p></div>
+            <div><h2>{moduleName} Contract Details</h2><p>Exact fields specified in {moduleName} PDF</p></div>
             <StatusBadge status={contract.status}/>
           </div>
           <div className="detail-fields">
@@ -945,13 +1125,20 @@ function ContractDetail({ data }) {
             <Detail label="4. GST NUMBER" value={contract.gst_number}/>
             <Detail label="5. ADDREESS" value={contract.party_address}/>
             <Detail label="6. CONTACT NO." value={contract.contact_number}/>
-            <Detail label="7. QUANTITY" value={`${contract.quantity_quintals} QUINTALS`}/>
-            <Detail label="8. COMMODITY" value="COTTON SEED"/>
-            <Detail label="9. DELIVERY CONDITION" value={contract.delivery_condition}/>
-            <Detail label="10. PAYMENT CONDITION" value={contract.payment_condition}/>
-            <Detail label="11. RATE PER QUINTALS" value={contract.rate_per_quintal ? `₹${Number(contract.rate_per_quintal).toLocaleString("en-IN")}` : "—"}/>
-            <Detail label="12. PACKING TYPE" value={contract.packing_type || "LOOSE/BAGS"}/>
-            <Detail label="13. DELIVERY ADDRESS" value={contract.delivery_address}/>
+            {isNetCotton && <Detail label="7. BROKER NAME AND FIRM NAME" value={contract.broker_name_and_firm_name}/>}
+            {isNetCotton && <Detail label="8. PR NO ." value={contract.pr_no}/>}
+            {isNetCotton && <Detail label="9. LOT NO." value={contract.lot_no}/>}
+            <Detail label={isNetCotton ? "10. QUANTITY" : "7. QUANTITY"} value={contract.quantity}/>
+            <Detail label={isNetCotton ? "11. COMMODITY" : "8. COMMODITY"} value={contract.commodity}/>
+            <Detail label={isNetCotton ? "12. DELIVERY CONDITION" : "9. DELIVERY CONDITION"} value={contract.delivery_condition}/>
+            <Detail label={isNetCotton ? "13. PAYMENT CONDITION" : "10. PAYMENT CONDITION"} value={contract.payment_condition}/>
+            {isNetCotton ? (
+              <Detail label="14. RATE PER CANDY" value={contract.rate_per_candy ? `₹${Number(contract.rate_per_candy).toLocaleString("en-IN")}` : "—"}/>
+            ) : (
+              <Detail label="11. RATE PER QUINTALS" value={contract.rate_per_quintal ? `₹${Number(contract.rate_per_quintal).toLocaleString("en-IN")}` : "—"}/>
+            )}
+            {!isNetCotton && <Detail label="12. PACKING TYPE :LOOSE/BAGS" value={contract.packing_type}/>}
+            <Detail label={isNetCotton ? "15. DELIVERY ADDRESS" : "13. DELIVERY ADDRESS"} value={contract.delivery_address}/>
           </div>
         </section>
 
@@ -966,7 +1153,7 @@ function ContractDetail({ data }) {
       </div>
     )}
 
-    {/* STEP 2: GENERATE CONTRACT AFTER CONFORMATION SEND TO THE BUYER */}
+    {/* STEP 2: SEND TO BUYER */}
     {currentStep === 2 && (
       <div>
         <div className="panel" style={{marginBottom: 20, padding: "20px 24px", background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14}}>
@@ -988,16 +1175,16 @@ function ContractDetail({ data }) {
           </div>
         </div>
 
-        {/* Exact 5 Terms & Conditions */}
+        {/* 5 Terms & Conditions from PDF */}
         <section className="panel" style={{ padding: 22, marginBottom: 20 }}>
           <div className="panel-heading" style={{ padding: 0, marginBottom: 14 }}>
             <div>
               <h2>Terms & Conditions :</h2>
-              <p>5 legal clauses as specified in the PDF</p>
+              <p>5 legal clauses verbatim from {moduleName} PDF</p>
             </div>
           </div>
           <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, lineHeight: 1.85, color: "#475569" }}>
-            {SOURCE_TERMS.map((term, i) => <li key={i} style={{ marginBottom: 8 }}>{term}</li>)}
+            {termsList.map((term, i) => <li key={i} style={{ marginBottom: 8 }}>{term}</li>)}
           </ol>
           <div style={{ marginTop: 16, borderTop: "1px solid #e2e8f0", paddingTop: 12, fontSize: 11, color: "#64748b" }}>
             <strong>Signatures:</strong> Broker Sign & Stamp, Buyer Sign & Stamp, Seller Sign & Stamp
@@ -1015,12 +1202,12 @@ function ContractDetail({ data }) {
       </div>
     )}
 
-    {/* STEP 3: LOADING DETAILS AS PER CONTRACT (EXACT 6 FIELDS) */}
+    {/* STEP 3: LOADING DETAILS AS PER CONTRACT */}
     {currentStep === 3 && (
       <div>
         <section className="panel">
           <div className="panel-heading">
-            <div><h2>Step 3: Loading details as per contract</h2><p>Exact 6 loading fields from the specification document</p></div>
+            <div><h2>Step 3: Loading details as per contract</h2><p>Exact loading fields from {moduleName} PDF</p></div>
             <Truck size={20}/>
           </div>
           <form className="loading-form" onSubmit={saveLoading}>
@@ -1033,13 +1220,18 @@ function ContractDetail({ data }) {
             <Field label="3. Driver license no." required>
               <input required value={loading.driver_license_number || ""} onChange={e => setLoading({...loading, driver_license_number: e.target.value})} placeholder="Driver license number"/>
             </Field>
-            <Field label="4. Transport no.">
+            {isNetCotton && (
+              <Field label="4. Driver contact number" required>
+                <input required value={loading.driver_contact_number || ""} onChange={e => setLoading({...loading, driver_contact_number: e.target.value})} placeholder="+91 98765 43210"/>
+              </Field>
+            )}
+            <Field label={isNetCotton ? "5. Transport no." : "4. Transport no."}>
               <input value={loading.transport_number || ""} onChange={e => setLoading({...loading, transport_number: e.target.value})} placeholder="Transport registration / permit no."/>
             </Field>
-            <Field label="5. Transport name" required>
+            <Field label={isNetCotton ? "6. Transporter name" : "5. Transport name"} required>
               <input required value={loading.transport_name || ""} onChange={e => setLoading({...loading, transport_name: e.target.value})} placeholder="Transport company name"/>
             </Field>
-            <Field label="6. Lr no." required>
+            <Field label={isNetCotton ? "7. LR no." : "6. Lr no."} required>
               <input required value={loading.lr_number || ""} onChange={e => setLoading({...loading, lr_number: e.target.value})} placeholder="Lorry receipt number"/>
             </Field>
 
@@ -1072,17 +1264,18 @@ function ContractDetail({ data }) {
 
           <div style={{ padding: "0 21px 20px" }}>
             <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: 18, marginBottom: 18 }}>
-              <h3 style={{ margin: "0 0 10px", fontSize: 13, color: "#1e293b" }}>Gate Pass Summary</h3>
+              <h3 style={{ margin: "0 0 10px", fontSize: 13, color: "#1e293b" }}>Gate Pass Summary ({moduleName})</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 11 }}>
                 <div><span style={{ color: "#64748b" }}>Contract:</span> <strong>{contract.contract_number}</strong></div>
-                <div><span style={{ color: "#64748b" }}>Commodity:</span> <strong>COTTON SEED</strong></div>
+                <div><span style={{ color: "#64748b" }}>Commodity:</span> <strong>{contract.commodity}</strong></div>
                 <div><span style={{ color: "#64748b" }}>Party:</span> <strong>{contract.party_name}</strong></div>
                 <div><span style={{ color: "#64748b" }}>1. Truck/tempo:</span> <strong>{loading.vehicle_number || "Not saved"}</strong></div>
                 <div><span style={{ color: "#64748b" }}>2. Net Weight:</span> <strong>{loading.net_weight_quintals ? `${loading.net_weight_quintals} Quintals` : "—"}</strong></div>
                 <div><span style={{ color: "#64748b" }}>3. Driver License:</span> <strong>{loading.driver_license_number || "—"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>4. Transport No.:</span> <strong>{loading.transport_number || "—"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>5. Transport Name:</span> <strong>{loading.transport_name || "—"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>6. LR No.:</span> <strong>{loading.lr_number || "—"}</strong></div>
+                {isNetCotton && <div><span style={{ color: "#64748b" }}>4. Driver Contact:</span> <strong>{loading.driver_contact_number || "—"}</strong></div>}
+                <div><span style={{ color: "#64748b" }}>Transport No.:</span> <strong>{loading.transport_number || "—"}</strong></div>
+                <div><span style={{ color: "#64748b" }}>Transporter:</span> <strong>{loading.transport_name || "—"}</strong></div>
+                <div><span style={{ color: "#64748b" }}>LR No.:</span> <strong>{loading.lr_number || "—"}</strong></div>
               </div>
             </div>
 
@@ -1109,21 +1302,29 @@ function Detail({ label, value }) {
   return <div className="detail-field"><span>{label}</span><strong>{value || "—"}</strong></div>;
 }
 
-function LoadingPage({ data }) {
+function LoadingPage({ data, activeModule }) {
+  const isNetCotton = activeModule === "net_cotton";
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
+  const modContracts = data.contracts.filter(c => (c.module || "cotton_seed") === activeModule);
   const navigate = useNavigate();
+
   return <>
-    <PageHeading eyebrow="STEP 03" title="Step 3: Loading Details as per Contract" description="Choose a contract to record the 6 loading details: Truck/tempo, Net weight, Driver license, Transport no, Transport name, and LR no."/>
+    <PageHeading
+      eyebrow={`STEP 03 / ${moduleName.toUpperCase()}`}
+      title={`Step 3: Loading Details as per Contract`}
+      description={`Choose a ${moduleName} contract to record loading details: Truck/tempo, Net weight, Driver license, ${isNetCotton ? "Driver contact, " : ""}Transport no, Transporter name, and LR no.`}
+    />
     <section className="panel">
       <div className="panel-heading">
-        <div><h2>Contracts for Loading</h2><p>{data.contracts.length} contract(s) registered</p></div>
+        <div><h2>Contracts for Loading</h2><p>{modContracts.length} contract(s) registered</p></div>
         <Truck size={19}/>
       </div>
-      {data.contracts.length ? (
-        <ContractTable contracts={data.contracts} onOpen={id => navigate(`/contracts/${id}?step=3`)}/>
+      {modContracts.length ? (
+        <ContractTable contracts={modContracts} onOpen={id => navigate(`/contracts/${id}?step=3`)} isNetCotton={isNetCotton}/>
       ) : (
         <div className="empty-state">
           <Truck size={25}/>
-          <strong>No contracts awaiting loading</strong>
+          <strong>No {moduleName} contracts awaiting loading</strong>
           <button className="button primary" onClick={() => navigate("/contracts/new")}>Step 1: New Contract <ArrowRight size={15}/></button>
         </div>
       )}
@@ -1131,7 +1332,9 @@ function LoadingPage({ data }) {
   </>;
 }
 
-function GatePasses({ data }) {
+function GatePasses({ data, activeModule }) {
+  const isNetCotton = activeModule === "net_cotton";
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
   const [passes, setPasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1147,7 +1350,11 @@ function GatePasses({ data }) {
   }, [data.demoMode]);
 
   return <>
-    <PageHeading eyebrow="STEP 04" title="Step 4: Gate Passes" description="Generate and review Gate Passes containing all contract details and loading details."/>
+    <PageHeading
+      eyebrow={`STEP 04 / ${moduleName.toUpperCase()}`}
+      title="Step 4: Gate Passes"
+      description={`Generate and review Gate Passes containing all contract details and loading details for ${moduleName}.`}
+    />
     <section className="panel">
       <div className="panel-heading">
         <div><h2>Gate Passes</h2><p>Official passes generated with contract and loading details</p></div>
@@ -1156,10 +1363,10 @@ function GatePasses({ data }) {
       {data.demoMode ? (
         <div className="empty-state">
           <PackageCheck size={25}/>
-          <strong>Gate Pass Generator Active</strong>
-          <span>Select any contract from the register or click below to open Step 4 and generate an official Gate Pass PDF.</span>
+          <strong>Gate Pass Generator Active ({moduleName})</strong>
+          <span>Select any {moduleName} contract from the register or click below to open Step 4 and generate an official Gate Pass PDF.</span>
           <button className="button primary" onClick={() => {
-            const first = data.contracts[0];
+            const first = data.contracts.find(c => (c.module || "cotton_seed") === activeModule);
             if (first) window.location.href = `#/contracts/${first.id}?step=4`;
           }}>Open Gate Pass Generator <ArrowRight size={14}/></button>
         </div>
@@ -1203,14 +1410,17 @@ function GatePasses({ data }) {
   </>;
 }
 
-function PartiesPage({ data }) {
-  const demoParties = [...new Map(data.contracts.filter(c => c.party_name).map(c => [c.party_name, { name: c.party_name, gst_number: c.gst_number, contact_number: c.contact_number, address: c.party_address }])).values()];
+function PartiesPage({ data, activeModule }) {
+  const isNetCotton = activeModule === "net_cotton";
+  const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
+  const modContracts = data.contracts.filter(c => (c.module || "cotton_seed") === activeModule);
+  const demoParties = [...new Map(modContracts.filter(c => c.party_name).map(c => [c.party_name, { name: c.party_name, gst_number: c.gst_number, contact_number: c.contact_number, address: c.party_address }])).values()];
 
   return <>
-    <PageHeading eyebrow="DIRECTORY" title="Parties" description="Party name, GST number, contact number, and address records from contracts."/>
+    <PageHeading eyebrow="DIRECTORY" title="Parties" description={`Party name, GST number, contact number, and address records from ${moduleName} contracts.`}/>
     <section className="panel">
       <div className="panel-heading">
-        <div><h2>Party Directory</h2><p>Parties registered across Cotton Seed contracts</p></div>
+        <div><h2>Party Directory</h2><p>Parties registered across {moduleName} contracts</p></div>
         <Users size={19}/>
       </div>
       {!demoParties.length ? (

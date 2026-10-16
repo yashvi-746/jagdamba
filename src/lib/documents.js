@@ -7,8 +7,8 @@ const money = (v) =>
     ? "—"
     : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
-// Exact 5 terms & conditions verbatim from the specification PDF
-export const SOURCE_TERMS = [
+// Terms for Cotton Seed (PDF 1: says "within 1 days")
+export const COTTON_SEED_TERMS = [
   "we have prepared this contract confirmation as per details and terms mention hear agreed by buyer and seller both. If any discrepancy in contract detail and terms buyers and sellers has inform us within 24 hours which please note.",
   "Buyer and seller both has sign contract confirmation and have to send us within 1 days.",
   "We send this contract confirmation by MAIL OR WHATand if we will not get any reply nor sign from buyer and seller even though this contract confirmation is treat as confirm and binding to buyer and seller both which please note.",
@@ -16,12 +16,21 @@ export const SOURCE_TERMS = [
   "If any dispute arise then buyer and seller has to hold our brokerage related to that contract confirmation only and not our other brokerage"
 ];
 
-function basePdf(title, contract) {
+// Terms for Net Cotton (PDF 2: says "within 2 days")
+export const NET_COTTON_TERMS = [
+  "we have prepared this contract confirmation as per details and terms mention hear agreed by buyer and seller both. If any discrepancy in contract detail and terms buyers and sellers has inform us within 24 hours which please note.",
+  "Buyer and seller both has sign contract confirmation and have to send us within 2 days.",
+  "We send this contract confirmation by MAIL OR WHATand if we will not get any reply nor sign from buyer and seller even though this contract confirmation is treat as confirm and binding to buyer and seller both which please note.",
+  "We are only broker and we don \"t have any legal nor financial responsibility if any dispute arise in this contract, we are only link between buyer and seller which please note.",
+  "If any dispute arise then buyer and seller has to hold our brokerage related to that contract confirmation only and not our other brokerage"
+];
+
+function basePdf(title, subtitle, contract) {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const w = pdf.internal.pageSize.getWidth();
 
   // Header navy bar
-  pdf.setFillColor(16, 27, 45);
+  pdf.setFillColor(15, 23, 42);
   pdf.rect(0, 0, w, 32, "F");
 
   // Logo badge & emblem
@@ -30,7 +39,7 @@ function basePdf(title, contract) {
     pdf.roundedRect(12, 4, 30, 24, 2, 2, "F");
     pdf.addImage(LOGO_BASE64, "PNG", 14, 5.5, 26, 21);
   } catch (e) {
-    // Graceful fallback
+    // Fallback
   }
 
   pdf.setTextColor(255, 255, 255);
@@ -40,14 +49,15 @@ function basePdf(title, contract) {
 
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8.5);
-  pdf.text("COTTON SEED CONTRACT MANAGEMENT", 48, 20);
+  pdf.text(subtitle, 48, 20);
 
   pdf.setFontSize(7.5);
-  pdf.setTextColor(200, 210, 225);
-  pdf.text("OFFICIAL BROKER CONFIRMATION & GATE PASS SYSTEM", 48, 25);
+  pdf.setTextColor(203, 213, 225);
+  pdf.text("CONTRACT CONFIRMATION & GATE PASS SYSTEM", 48, 25);
 
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(13);
+  pdf.setFontSize(12.5);
+  pdf.setTextColor(255, 255, 255);
   pdf.text(title, w - 15, 18, { align: "right" });
 
   pdf.setTextColor(30, 41, 59);
@@ -65,7 +75,7 @@ function section(pdf, title, rows, y) {
   pdf.roundedRect(15, y, w - 30, 7.5, 1.5, 1.5, "F");
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(9.5);
-  pdf.setTextColor(16, 27, 45);
+  pdf.setTextColor(15, 23, 42);
   pdf.text(title, 19, y + 5.2);
   y += 12;
   pdf.setFont("helvetica", "normal");
@@ -84,39 +94,64 @@ function section(pdf, title, rows, y) {
 }
 
 // STEP 2: Generate the contract after conformation send to the buyer
-// Contains EXACTLY the 13 fields from Step 1 of the PDF + 5 Terms & Conditions + 3 Signatures
 export function generateContractPdf(c, { returnBlob = false } = {}) {
-  const pdf = basePdf("CONTRACT CONFIRMATION", c);
+  const isNetCotton = c.module === "net_cotton";
+  const title = isNetCotton ? "NET COTTON CONFIRMATION" : "COTTON SEED CONFIRMATION";
+  const subtitle = isNetCotton ? "NET COTTON (COTTON BALES)" : "COTTON SEED";
+  const pdf = basePdf(title, subtitle, c);
   let y = 46;
 
-  // Exact 13 items from Step 1 of the PDF
-  const items = [
-    ["1. DATE", c.contract_date],
-    ["2. CONTRACT NUMBER", c.contract_number],
-    ["3. PARTY NAME", c.party_name],
-    ["4. GST NUMBER", c.gst_number],
-    ["5. ADDREESS", c.party_address],
-    ["6. CONTACT NO.", c.contact_number],
-    ["7. QUANTITY", `${safe(c.quantity_quintals)} QUINTALS`],
-    ["8. COMMODITY", "COTTON SEED"],
-    ["9. DELIVERY CONDITION", c.delivery_condition],
-    ["10. PAYMENT CONDITION", c.payment_condition],
-    ["11. RATE PER QUINTALS", c.rate_per_quintal ? `INR ${money(c.rate_per_quintal)} / Quintal` : "—"],
-    ["12. PACKING TYPE", c.packing_type || "LOOSE/BAGS"],
-    ["13. DELIVERY ADDRESS", c.delivery_address]
-  ];
+  let items = [];
+  if (isNetCotton) {
+    // Module 2: Exact 15 fields from NET COTTON PDF
+    items = [
+      ["1. DATE", c.contract_date],
+      ["2. CONTRACT NUMBER .", c.contract_number],
+      ["3. PARTY NAME", c.party_name],
+      ["4. GST NUMBER", c.gst_number],
+      ["5. ADDREESS", c.party_address],
+      ["6. CONTACT NO.", c.contact_number],
+      ["7. BROKER NAME AND FIRM NAME", c.broker_name_and_firm_name],
+      ["8. PR NO .", c.pr_no],
+      ["9. LOT NO.", c.lot_no],
+      ["10. QUANTITY", c.quantity],
+      ["11. COMMODITY", "COTTON BALES"],
+      ["12. DELIVERY CONDITION", c.delivery_condition],
+      ["13. PAYMENT CONDITION", c.payment_condition],
+      ["14. RATE PER CANDY", c.rate_per_candy ? `INR ${money(c.rate_per_candy)} / Candy` : "—"],
+      ["15. DELIVERY ADDRESS", c.delivery_address]
+    ];
+    y = section(pdf, "NET COTTON CONTRACT DETAILS (STEP 1)", items, y);
+  } else {
+    // Module 1: Exact 13 fields from COTTON SEED PDF
+    items = [
+      ["1. DATE", c.contract_date],
+      ["2. CONTRACT NUMBER .", c.contract_number],
+      ["3. PARTY NAME", c.party_name],
+      ["4. GST NUMBER", c.gst_number],
+      ["5. ADDREESS", c.party_address],
+      ["6. CONTACT NO.", c.contact_number],
+      ["7. QUANTITY", c.quantity ? `${c.quantity} Quintals` : "—"],
+      ["8. COMMODITY", "COTTON SEED"],
+      ["9. DELIVERY CONDITION", c.delivery_condition],
+      ["10. PAYMENT CONDITION", c.payment_condition],
+      ["11. RATE PER QUINTALS", c.rate_per_quintal ? `INR ${money(c.rate_per_quintal)} / Quintal` : "—"],
+      ["12. PACKING TYPE", c.packing_type || "LOOSE/BAGS"],
+      ["13. DELIVERY ADDRESS", c.delivery_address]
+    ];
+    y = section(pdf, "COTTON SEED CONTRACT DETAILS (STEP 1)", items, y);
+  }
 
-  y = section(pdf, "COTTON SEED CONTRACT DETAILS (STEP 1)", items, y);
-
-  // Terms & Conditions verbatim from the PDF
+  // Exact 5 Terms & Conditions from PDF
+  const terms = isNetCotton ? NET_COTTON_TERMS : COTTON_SEED_TERMS;
   y = section(
     pdf,
     "Terms & Conditions :",
-    SOURCE_TERMS.map((term, i) => [`${i + 1})`, term]),
+    terms.map((term, i) => [`${i + 1})`, term]),
     y + 2
   );
 
-  // Exact 3 Signatures from PDF
+  // Exact 3 Signatures: Broker Sign & Stamp, Buyer Sign & Stamp, Seller Sign & Stamp
   if (y > 245) {
     pdf.addPage();
     y = 35;
@@ -140,41 +175,78 @@ export function generateContractPdf(c, { returnBlob = false } = {}) {
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(7);
   pdf.setTextColor(100, 110, 125);
-  pdf.text("Shree Jagdamba — Cotton Seed Contract Confirmation", 15, 287);
+  pdf.text(`Shree Jagdamba — ${isNetCotton ? "Net Cotton" : "Cotton Seed"} Contract Confirmation`, 15, 287);
 
   if (returnBlob) return pdf.output("blob");
   pdf.save(`Contract-${c.contract_number || "draft"}.pdf`);
 }
 
 // STEP 4: Generate gate pass with all details
-// Combines Contract Details + Step 3 Loading Details (Exact 6 fields from PDF)
 export function generateGatePassPdf(c, l, number, { returnBlob = false } = {}) {
-  const pdf = basePdf("GATE PASS", c);
+  const isNetCotton = c.module === "net_cotton";
+  const title = "GATE PASS";
+  const subtitle = isNetCotton ? "NET COTTON (COTTON BALES)" : "COTTON SEED";
+  const pdf = basePdf(title, subtitle, c);
   let y = 46;
 
-  // Contract Details (Step 1)
-  y = section(pdf, "CONTRACT DETAILS (AS PER CONTRACT)", [
-    ["Contract Number", c.contract_number],
-    ["Date", c.contract_date],
-    ["Party Name", c.party_name],
-    ["GST Number", c.gst_number],
-    ["Commodity", "COTTON SEED"],
-    ["Contracted Quantity", `${safe(c.quantity_quintals)} Quintals`],
-    ["Packing Type", c.packing_type || "LOOSE/BAGS"],
-    ["Delivery Address", c.delivery_address]
-  ], y);
+  // Step 1: Contract Details as per contract
+  let contractRows = [];
+  if (isNetCotton) {
+    contractRows = [
+      ["Contract Number", c.contract_number],
+      ["Date", c.contract_date],
+      ["Party Name", c.party_name],
+      ["GST Number", c.gst_number],
+      ["Broker Name and Firm Name", c.broker_name_and_firm_name],
+      ["PR No.", c.pr_no],
+      ["Lot No.", c.lot_no],
+      ["Commodity", "COTTON BALES"],
+      ["Quantity Contracted", c.quantity],
+      ["Delivery Address", c.delivery_address]
+    ];
+  } else {
+    contractRows = [
+      ["Contract Number", c.contract_number],
+      ["Date", c.contract_date],
+      ["Party Name", c.party_name],
+      ["GST Number", c.gst_number],
+      ["Commodity", "COTTON SEED"],
+      ["Quantity Contracted", c.quantity ? `${c.quantity} Quintals` : "—"],
+      ["Packing Type", c.packing_type || "LOOSE/BAGS"],
+      ["Delivery Address", c.delivery_address]
+    ];
+  }
 
-  // Step 3 Loading details as per contract (Exact 6 items from PDF)
-  y = section(pdf, "Step 3: Loading details as per contract", [
-    ["1. Truck /tempo number", l.vehicle_number],
-    ["2. Net Weight quintals", `${safe(l.net_weight_quintals)} Quintals`],
-    ["3. Driver license no.", l.driver_license_number],
-    ["4. Transport no.", l.transport_number],
-    ["5. Transport name", l.transport_name],
-    ["6. Lr no.", l.lr_number]
-  ], y + 2);
+  y = section(pdf, "CONTRACT DETAILS (AS PER CONTRACT)", contractRows, y);
 
-  // Gate Pass Signatures
+  // Step 3: Loading details as per contract
+  let loadingRows = [];
+  if (isNetCotton) {
+    // Module 2: Exact 7 loading fields from NET COTTON PDF
+    loadingRows = [
+      ["1. Truck /tempo number", l.vehicle_number],
+      ["2. Net Weight quintals", `${safe(l.net_weight_quintals)} Quintals`],
+      ["3. Driver license no.", l.driver_license_number],
+      ["4. Driver contact number", l.driver_contact_number],
+      ["5. Transport no.", l.transport_number],
+      ["6. Transporter name", l.transport_name],
+      ["7. LR no.", l.lr_number]
+    ];
+  } else {
+    // Module 1: Exact 6 loading fields from COTTON SEED PDF
+    loadingRows = [
+      ["1. Truck /tempo number", l.vehicle_number],
+      ["2. Net Weight quintals", `${safe(l.net_weight_quintals)} Quintals`],
+      ["3. Driver license no.", l.driver_license_number],
+      ["4. Transport no.", l.transport_number],
+      ["5. Transport name", l.transport_name],
+      ["6. Lr no.", l.lr_number]
+    ];
+  }
+
+  y = section(pdf, "Step 3: Loading details as per contract", loadingRows, y + 2);
+
+  // Signatures
   const w = pdf.internal.pageSize.getWidth();
   if (y > 250) {
     pdf.addPage();
