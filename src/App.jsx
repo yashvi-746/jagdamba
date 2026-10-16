@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity, ArrowDownToLine, ArrowLeft, ArrowRight, Bell, CalendarDays, Check,
-  ChevronDown, FileCheck2, FilePlus2, FileText, LayoutDashboard, LogOut, Menu,
+  FileCheck2, FilePlus2, FileText, LayoutDashboard, LogOut, Menu,
   PackageCheck, Plus, Search, ShieldCheck, Truck, Users, X, Mail, MessageCircle,
-  PenLine, Send, Layers, Sparkles
+  Send
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import { generateContractPdf, generateGatePassPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
@@ -49,15 +49,15 @@ const blankNetCotton = {
   status: "draft"
 };
 
-// Step 3 Loading Details: Module 1 has 6 fields; Module 2 has 7 fields (adds Driver contact number)
+// Step 3 Loading Details: Module 1 has 6 fields; Module 2 has 7 fields
 const blankLoadingDetails = {
   vehicle_number: "",          // 1. Truck /tempo number
   net_weight_quintals: "",     // 2. Net Weight quintals
   driver_license_number: "",   // 3. Driver license no.
-  driver_contact_number: "",   // 4. Driver contact number (Module 2 Net Cotton only)
+  driver_contact_number: "",   // 4. Driver contact number (Net Cotton only)
   transport_number: "",        // Transport no. (CS: #4, NC: #5)
-  transport_name: "",          // Transport name / Transporter name (CS: #5, NC: #6)
-  lr_number: ""                // Lr no. / LR no. (CS: #6, NC: #7)
+  transport_name: "",          // Transport name (CS: #5, NC: #6)
+  lr_number: ""                // Lr no. (CS: #6, NC: #7)
 };
 
 const demoContracts = [
@@ -144,8 +144,6 @@ export default function App() {
   const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem("seedledger_offline_mode") === "true");
   const [authChecked, setAuthChecked] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  
-  // Active Module State: "cotton_seed" (Module 1) or "net_cotton" (Module 2)
   const [activeModule, setActiveModule] = useState(() => localStorage.getItem("active_app_module") || "cotton_seed");
 
   const location = useLocation();
@@ -204,7 +202,7 @@ export default function App() {
           <button className="icon-button sidebar-close" onClick={() => setMobileOpen(false)}><X size={18}/></button>
         </div>
 
-        {/* Module Switcher Tab inside Sidebar */}
+        {/* Module Switcher Tab */}
         <div style={{ padding: "0 10px 16px" }}>
           <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: 4, borderRadius: 10, display: "flex", gap: 4 }}>
             <button
@@ -254,7 +252,7 @@ export default function App() {
             <div className="breadcrumbs"><span>{moduleName} Workspace</span><span className="crumb-slash">/</span><strong>{pageTitle}</strong></div>
           </div>
           <div className="topbar-actions">
-            {/* Topbar Quick Switcher */}
+            {/* Quick Switcher */}
             <div style={{ display: "flex", gap: 6, background: "#f1f5f9", padding: 3, borderRadius: 8 }}>
               <button
                 onClick={() => switchModule("cotton_seed")}
@@ -401,7 +399,7 @@ function Dashboard({ data, activeModule, switchModule }) {
             <Truck size={20} className="step-icon text-amber"/>
           </div>
           <h3>Loading Details as per Contract</h3>
-          <p>{isNetCotton ? "7 loading fields: Truck/tempo, Net weight, Driver license, Driver contact, Transport no, Transporter name, and LR no." : "6 loading fields: Truck/tempo, Net weight, Driver license, Transport no, Transport name, and Lr no."}</p>
+          <p>{isNetCotton ? "7 loading fields: Truck/tempo, Net weight, Driver license, Driver contact, Transport no, Transporter name, and LR no." : "6 loading fields: Truck/tempo number, Net Weight quintals, Driver license no., Transport no., Transport name, and Lr no."}</p>
           <div className="step-action-row"><span>Record Loading</span><ArrowRight size={14}/></div>
         </div>
 
@@ -579,7 +577,6 @@ function StatusBadge({ status }) {
 
 // ==========================================
 // STEP 1 & STEP 2: CONTRACT CREATION WIZARD
-// Dynamically renders exact fields based on activeModule
 // ==========================================
 function ContractForm({ data, activeModule }) {
   const isNetCotton = activeModule === "net_cotton";
@@ -1062,6 +1059,8 @@ function ContractDetail({ data }) {
     setMessage(`Step 2: Confirmation sent to Buyer via ${channel === "whatsapp" ? "WhatsApp" : "Email"}.`);
   }
 
+  const hasLoadingSaved = Boolean(loading.vehicle_number && loading.net_weight_quintals);
+
   return <>
     <button className="back-link" onClick={() => navigate("/contracts")}><ArrowLeft size={16}/> Back to contract register</button>
     
@@ -1140,6 +1139,69 @@ function ContractDetail({ data }) {
             {!isNetCotton && <Detail label="12. PACKING TYPE :LOOSE/BAGS" value={contract.packing_type}/>}
             <Detail label={isNetCotton ? "15. DELIVERY ADDRESS" : "13. DELIVERY ADDRESS"} value={contract.delivery_address}/>
           </div>
+        </section>
+
+        {/* INTEGRATED STEP 3 SECTION INSIDE CONTRACT DETAILS */}
+        <section className="panel" style={{ marginTop: 22 }}>
+          <div className="panel-heading">
+            <div>
+              <h2>Step 3: Loading details as per contract</h2>
+              <p>{isNetCotton ? "7 dispatch details for Net Cotton" : "6 dispatch details: Truck /tempo number, Net Weight quintals, Driver license no., Transport no., Transport name, and Lr no."}</p>
+            </div>
+            <Truck size={20}/>
+          </div>
+
+          {hasLoadingSaved ? (
+            <div style={{ padding: "0 21px 20px" }}>
+              <div className="detail-fields" style={{ marginBottom: 14 }}>
+                <Detail label="1. Truck /tempo number" value={loading.vehicle_number}/>
+                <Detail label="2. Net Weight quintals" value={loading.net_weight_quintals ? `${loading.net_weight_quintals} Quintals` : "—"}/>
+                <Detail label="3. Driver license no." value={loading.driver_license_number}/>
+                {isNetCotton && <Detail label="4. Driver contact number" value={loading.driver_contact_number}/>}
+                <Detail label={isNetCotton ? "5. Transport no." : "4. Transport no."} value={loading.transport_number}/>
+                <Detail label={isNetCotton ? "6. Transport name" : "5. Transport name"} value={loading.transport_name}/>
+                <Detail label={isNetCotton ? "7. LR no." : "6. Lr no."} value={loading.lr_number}/>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button className="button secondary" onClick={() => setStep(3)}>
+                  <Truck size={15}/> Edit Step 3 Loading Details
+                </button>
+                <button className="button primary" onClick={() => setStep(4)}>
+                  <PackageCheck size={15}/> Step 4: Generate Gate Pass <ArrowRight size={15}/>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: "0 21px 20px" }}>
+              <form className="loading-form" onSubmit={saveLoading} style={{ padding: 0 }}>
+                <Field label="1. Truck /tempo number" required>
+                  <input required value={loading.vehicle_number || ""} onChange={e => setLoading({...loading, vehicle_number: e.target.value})} placeholder="e.g. GJ 06 AB 1234"/>
+                </Field>
+                <Field label="2. Net Weight quintals" required>
+                  <input type="number" min="0.01" step="0.01" required value={loading.net_weight_quintals || ""} onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})} placeholder="Net Weight in Quintals"/>
+                </Field>
+                <Field label="3. Driver license no." required>
+                  <input required value={loading.driver_license_number || ""} onChange={e => setLoading({...loading, driver_license_number: e.target.value})} placeholder="Driver license number"/>
+                </Field>
+                {isNetCotton && (
+                  <Field label="4. Driver contact number" required>
+                    <input required value={loading.driver_contact_number || ""} onChange={e => setLoading({...loading, driver_contact_number: e.target.value})} placeholder="+91 98765 43210"/>
+                  </Field>
+                )}
+                <Field label={isNetCotton ? "5. Transport no." : "4. Transport no."}>
+                  <input value={loading.transport_number || ""} onChange={e => setLoading({...loading, transport_number: e.target.value})} placeholder="Transport registration / permit no."/>
+                </Field>
+                <Field label={isNetCotton ? "6. Transporter name" : "5. Transport name"} required>
+                  <input required value={loading.transport_name || ""} onChange={e => setLoading({...loading, transport_name: e.target.value})} placeholder="Transport company name"/>
+                </Field>
+                <Field label={isNetCotton ? "7. LR no." : "6. Lr no."} required>
+                  <input required value={loading.lr_number || ""} onChange={e => setLoading({...loading, lr_number: e.target.value})} placeholder="Lorry receipt number"/>
+                </Field>
+
+                <button className="button primary full"><Check size={16}/> Save Step 3 Loading Details</button>
+              </form>
+            </div>
+          )}
         </section>
 
         <div className="step-nav-footer">
