@@ -1,0 +1,522 @@
+/* ==========================================================================
+   MODERN CONTAINER-WISE ENTERPRISE UI STYLES ("DIFFER SECTION")
+   Clean, sleek modern styling matching the containerized layouts of the PDF
+   ========================================================================== */
+
+/* Main Enterprise Procurement Card */
+.modern-procurement-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  margin-bottom: 24px;
+  overflow: hidden;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1E293B;
+}
+
+/* Factory Brand Strip (Replaces fake Windows title bar) */
+.factory-brand-strip {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  color: #FFFFFF;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 2px solid #D6B77C;
+}
+
+.factory-brand-strip .brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.factory-brand-strip .brand-badge {
+  background: #D6B77C;
+  color: #0F172A;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.factory-brand-strip h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.3px;
+}
+
+.factory-brand-strip p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #94A3B8;
+}
+
+.factory-brand-strip .brand-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  color: #CBD5E1;
+}
+
+.factory-brand-strip .session-pill {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+}
+
+/* Sub-Header Container: Clean Title & Action Bar */
+.container-header-bar {
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.container-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.container-title h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  color: #0F172A;
+}
+
+.container-badge {
+  background: #EEF2FF;
+  color: #4F46E5;
+  border: 1px solid #C7D2FE;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+/* Party Entity 3-Box Container (Dalal, Buyer, Seller) */
+.party-entities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 18px 20px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.entity-box {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.entity-box-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.entity-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.entity-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entity-field label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.entity-field input, .entity-field select {
+  height: 32px;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  background: #FFFFFF;
+  font-weight: 500;
+}
+
+.entity-field input:focus, .entity-field select:focus {
+  border-color: #3B82F6;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Consignment Metadata Bar */
+.consignment-meta-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 14px 20px;
+  background: #F1F5F9;
+  border-bottom: 1px solid #CBD5E1;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-item label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.meta-item input, .meta-item select {
+  height: 32px;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  background: #FFFFFF;
+  font-weight: 600;
+}
+
+/* 6-Column Weighment Strip (Exact Page 4 Formula Container) */
+.weighment-strip-container {
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.weighment-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .weighment-grid-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .weighment-grid-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.weigh-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.weigh-card.highlight-net {
+  background: #F0FDF4;
+  border-color: #86EFAC;
+}
+
+.weigh-card.highlight-final {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+}
+
+.weigh-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.weigh-card input {
+  height: 34px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.weigh-card-value {
+  font-size: 16px;
+  font-weight: 800;
+  text-align: right;
+  color: #0F172A;
+  padding: 6px 0;
+}
+
+.weigh-card.highlight-net .weigh-card-value {
+  color: #15803D;
+}
+
+.weigh-card.highlight-final .weigh-card-value {
+  color: #1D4ED8;
+  font-size: 18px;
+}
+
+.weigh-card-sub {
+  font-size: 9px;
+  color: #94A3B8;
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* Case Type (Cash Drawer vs Debit) Container */
+.casetype-split-container {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  padding: 18px 20px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+@media (max-width: 850px) {
+  .casetype-split-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.casetype-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.casetype-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.casetype-toggle-group {
+  display: flex;
+  gap: 8px;
+}
+
+.casetype-toggle-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1.5px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.casetype-toggle-btn.active.cash {
+  background: #ECFDF5;
+  border-color: #10B981;
+  color: #065F46;
+}
+
+.casetype-toggle-btn.active.debit {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+  color: #1E40AF;
+}
+
+/* Modern Currency Drawer Grid (500, 200, 100, 50, 20, 10, 5) */
+.modern-currency-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.currency-slot {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.currency-slot.has-notes {
+  border-color: #3B82F6;
+  background: #F0F7FF;
+}
+
+.currency-slot-denom {
+  font-size: 11px;
+  font-weight: 750;
+  color: #1E293B;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.currency-slot input {
+  height: 28px;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.currency-slot-sub {
+  font-size: 9px;
+  color: #64748B;
+  margin-top: 4px;
+  display: block;
+}
+
+.currency-balance-pill {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.currency-balance-pill.balanced {
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.currency-balance-pill.mismatch {
+  background: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+
+/* 4-Signature Container */
+.signatures-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border-top: 1px solid #E2E8F0;
+}
+
+@media (max-width: 700px) {
+  .signatures-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.sign-box {
+  border: 1px dashed #CBD5E1;
+  border-radius: 8px;
+  padding: 14px 10px 10px;
+  text-align: center;
+  background: #F8FAFC;
+}
+
+.sign-line {
+  height: 28px;
+}
+
+.sign-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1E293B;
+  display: block;
+  border-top: 1px solid #CBD5E1;
+  padding-top: 6px;
+}
+
+.sign-sub {
+  font-size: 9px;
+  color: #94A3B8;
+  display: block;
+  margin-top: 2px;
+}
+
+/* Modern Report Table Container */
+.modern-report-container {
+  background: #FFFFFF;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #E2E8F0;
+}
+
+.modern-report-header {
+  padding: 14px 18px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.modern-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.modern-report-table th {
+  background: #F1F5F9;
+  border-bottom: 1px solid #CBD5E1;
+  padding: 10px 14px;
+  font-weight: 700;
+  color: #475569;
+  text-align: left;
+}
+
+.modern-report-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #F1F5F9;
+  color: #334155;
+}
+
+.modern-report-table tr:hover {
+  background: #F8FAFC;
+}
+
+.modern-report-footer {
+  background: #F8FAFC;
+  font-weight: 800;
+  border-top: 2px solid #CBD5E1;
+}
+
+.modern-report-footer td {
+  padding: 12px 14px;
+  color: #0F172A;
+}
