@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   FileText,
   UserCheck,
@@ -18,7 +18,10 @@ import {
   Clock,
   Truck,
   Hash,
-  Scale
+  Scale,
+  Trash2,
+  CornerDownLeft,
+  Sparkles
 } from "lucide-react";
 import {
   getLocalFarmers,
@@ -36,11 +39,46 @@ const BUYER_DEFAULT = {
 const NOTE_DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5];
 
 export default function TriplicateBillingPage() {
-  const [activeStep, setActiveStep] = useState(2); // 1: Master, 2: Billing, 3: History
+  const [activeStep, setActiveStep] = useState(1); // 1: Master Registration & Selection, 2: Triplicate Bill Form, 3: Saved Bills
   const [farmers, setFarmers] = useState(() => getLocalFarmers());
   const [bills, setBills] = useState(() => getLocalTriplicateBills());
   const [message, setMessage] = useState("");
   const [searchHistory, setSearchHistory] = useState("");
+
+  // Refs for rapid keyboard entry
+  const step1Refs = useRef({});
+  const step2Refs = useRef({});
+
+  const handleStep1KeyDown = (e, fieldName) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const order = ["farmer_name", "village", "vehicle_number", "contact_number", "land_record", "aadhaar_card_number"];
+      const idx = order.indexOf(fieldName);
+      if (idx !== -1 && idx < order.length - 1) {
+        step1Refs.current[order[idx + 1]]?.focus();
+      } else if (idx === order.length - 1) {
+        // Trigger submit
+        step1Refs.current["submit_btn"]?.focus();
+      }
+    }
+  };
+
+  const handleStep2KeyDown = (e, fieldName) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const order = ["seller_name", "seller_residence", "heap_number", "vehicle_number", "gross_weight", "tare_weight", "rate", "labor_charges", "vatav", "remarks"];
+      const idx = order.indexOf(fieldName);
+      if (idx !== -1 && idx < order.length - 1) {
+        step2Refs.current[order[idx + 1]]?.focus();
+      } else if (fieldName === "rate") {
+        // Auto-fill notes if cash drawer is active
+        autoCalculateNotes();
+        step2Refs.current["labor_charges"]?.focus();
+      } else if (fieldName === "remarks") {
+        step2Refs.current["save_btn"]?.focus();
+      }
+    }
+  };
 
   // Step 1: Farmer Master Form
   const [selectedFarmerId, setSelectedFarmerId] = useState("");
@@ -53,46 +91,46 @@ export default function TriplicateBillingPage() {
     aadhaar_card_number: ""
   });
 
-  // Step 2: Triplicate Bill Form (All containers from Page 4)
+  // Step 2: Triplicate Bill Form (Starts completely blank for fresh user entry)
   const [billForm, setBillForm] = useState({
     bill_number: "TB-" + (1000 + bills.length + 1),
     dalal_name: "Shree Jagdamba Cotton G And P Factory",
-    dalal_residence: "handod",
+    dalal_residence: "Handod",
     buyer_name: "Shree Jagdamba Cotton G And P Factory",
     buyer_residence: "Handod",
-    seller_name: "Anilbhai",
-    seller_residence: "Fetapura",
-    vehicle_number: "GJ 06 AA 1101",
+    seller_name: "",
+    seller_residence: "",
+    vehicle_number: "",
     commodity: "Kapash",
     cotton_type: "Kapash",
-    heap_number: "6",
-    gate_pass_number: "GP-101",
-    bill_date: "13-10-2026",
+    heap_number: "",
+    gate_pass_number: "",
+    bill_date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-"),
     bill_time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-    gross_weight: 4.20,
-    tare_weight: 0.50,
-    rate: 7800.00,
-    labor_charges: 0,
-    vatav: 0,
-    diff: 0,
+    gross_weight: "",
+    tare_weight: "",
+    rate: "",
+    labor_charges: "",
+    vatav: "",
+    diff: "",
     remarks: "",
     payment_mode: "CASH", // CASH or DEBIT
-    // Cash drawer denominations (exact match: 500, 200, 100, 50, 20, 10, 5)
+    // Cash drawer denominations (starts with zero)
     currency_drawer: {
-      500: 57,
-      200: 1,
-      100: 1,
-      50: 1,
+      500: 0,
+      200: 0,
+      100: 0,
+      50: 0,
       20: 0,
-      10: 1,
+      10: 0,
       5: 0
     },
     // Debit fields
-    due_date: "28-10-2026",
-    total_credit_days: 15,
+    due_date: "",
+    total_credit_days: "",
     cheque_number: "",
     neft_reference: "",
-    bank_name: "SBI Handod"
+    bank_name: ""
   });
 
   // Calculation formulas:
@@ -206,10 +244,11 @@ export default function TriplicateBillingPage() {
     setTimeout(() => setMessage(""), 3000);
   };
 
-  // Save Triplicate Bill
+  // Save Triplicate Bill (Works for both "Save Bill Without Printing" and "Save & Print 3-Copy")
   const handleSaveBill = (andPrint = false) => {
     if (!billForm.seller_name.trim()) {
-      setMessage("Please enter Seller / Farmer Name.");
+      setMessage("Please enter Seller / Farmer Name before saving.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     const newBill = {
@@ -225,19 +264,62 @@ export default function TriplicateBillingPage() {
     setBills(updatedBills);
     saveLocalTriplicateBills(updatedBills);
 
-    setMessage(`Triplicate Bill ${newBill.bill_number} generated and saved successfully!`);
-    setTimeout(() => setMessage(""), 4000);
-
+    // If print requested, trigger the clean PDF generation
     if (andPrint) {
       generateTriplicateBillPdf(newBill);
     }
 
-    // Increment bill numbers for next entry
+    setMessage(`Triplicate Bill ${newBill.bill_number} for "${newBill.seller_name}" saved successfully!`);
+    
+    // Increment bill numbers for next entry and clear entry fields
     setBillForm(prev => ({
       ...prev,
       bill_number: "TB-" + (1000 + updatedBills.length + 1),
-      gate_pass_number: "GP-" + (100 + updatedBills.length + 1)
+      gate_pass_number: "GP-" + (100 + updatedBills.length + 1),
+      seller_name: "",
+      seller_residence: "",
+      vehicle_number: "",
+      heap_number: "",
+      gross_weight: "",
+      tare_weight: "",
+      rate: "",
+      labor_charges: "",
+      vatav: "",
+      diff: "",
+      remarks: "",
+      currency_drawer: { 500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0 },
+      due_date: "",
+      total_credit_days: "",
+      cheque_number: "",
+      neft_reference: "",
+      bank_name: ""
     }));
+
+    // If user clicked "Save Bill Without Printing", redirect to Step 3 (Saved Bills Register) so they see it immediately
+    if (!andPrint) {
+      setTimeout(() => {
+        setActiveStep(3);
+      }, 700);
+    }
+
+    setTimeout(() => setMessage(""), 5000);
+  };
+
+  const deleteBill = (id) => {
+    const updated = bills.filter(b => b.id !== id);
+    setBills(updated);
+    saveLocalTriplicateBills(updated);
+    setMessage("Bill removed from register.");
+    setTimeout(() => setMessage(""), 2500);
+  };
+
+  const clearAllBills = () => {
+    if (window.confirm("Are you sure you want to delete all saved bills and clear history completely?")) {
+      setBills([]);
+      saveLocalTriplicateBills([]);
+      setMessage("All saved bills history cleared successfully.");
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // Filter bills for History tab
@@ -251,22 +333,64 @@ export default function TriplicateBillingPage() {
     );
   });
 
+  const handleResetForm = () => {
+    setBillForm({
+      bill_number: "TB-" + (1000 + bills.length + 1),
+      dalal_name: "Shree Jagdamba Cotton G And P Factory",
+      dalal_residence: "Handod",
+      buyer_name: "Shree Jagdamba Cotton G And P Factory",
+      buyer_residence: "Handod",
+      seller_name: "",
+      seller_residence: "",
+      vehicle_number: "",
+      commodity: "Kapash",
+      cotton_type: "Kapash",
+      heap_number: "",
+      gate_pass_number: "",
+      bill_date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-"),
+      bill_time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      gross_weight: "",
+      tare_weight: "",
+      rate: "",
+      labor_charges: "",
+      vatav: "",
+      diff: "",
+      remarks: "",
+      payment_mode: "CASH",
+      currency_drawer: { 500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0 },
+      due_date: "",
+      total_credit_days: "",
+      cheque_number: "",
+      neft_reference: "",
+      bank_name: ""
+    });
+    setMessage("Form reset to clean blank state.");
+    setTimeout(() => setMessage(""), 2500);
+  };
+
   return (
     <div className="triplicate-billing-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">FARMER PROCUREMENT ("DIFFER SECTION")</div>
-          <h1>Purchase Bill / Triplicate Billing System</h1>
+          <div className="eyebrow">FARMER PROCUREMENT SECTION</div>
+          <h1>Purchase Bill / Triplicate Billing</h1>
           <p>
-            Complete container-wise raw cotton weighbridge settlement with Currency Drawer (500, 200, 100, 50, 20, 10, 5) and 4-copy signatures.
+            Raw cotton weighbridge settlement with cash currency drawer breakdown and multi-copy vouchers.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button
+            className="button secondary"
+            onClick={handleResetForm}
+            title="Clear all fields"
+          >
+            Clear / Blank Form
+          </button>
+          <button
             className={`button ${activeStep === 3 ? "primary" : "secondary"}`}
             onClick={() => setActiveStep(3)}
           >
-            <FileText size={15} /> Saved Bills History ({bills.length})
+            <FileText size={15} /> Saved Bills ({bills.length})
           </button>
         </div>
       </div>
@@ -285,8 +409,8 @@ export default function TriplicateBillingPage() {
         >
           <div className="stepper-num">1</div>
           <div className="stepper-label">
-            <strong>Step 1: Master Registration</strong>
-            <span>Farmer KYC & Buyer Registry</span>
+            <strong>Step 1: Farmer Master</strong>
+            <span>Farmer Profile & KYC</span>
           </div>
         </button>
 
@@ -296,8 +420,8 @@ export default function TriplicateBillingPage() {
         >
           <div className="stepper-num">2</div>
           <div className="stepper-label">
-            <strong>Step 2: Triplicate Billing Form</strong>
-            <span>Weighment, Currency Drawer & Case Type</span>
+            <strong>Step 2: Triplicate Voucher</strong>
+            <span>Weighment, Rate & Currency Drawer</span>
           </div>
         </button>
 
@@ -307,8 +431,8 @@ export default function TriplicateBillingPage() {
         >
           <div className="stepper-num">3</div>
           <div className="stepper-label">
-            <strong>Saved Bills Register</strong>
-            <span>Triplicate Vouchers Archive</span>
+            <strong>Step 3: Bills Register</strong>
+            <span>Saved Vouchers Archive</span>
           </div>
         </button>
       </div>
@@ -347,73 +471,114 @@ export default function TriplicateBillingPage() {
                 </select>
               </div>
 
+              {/* Keyboard Quick Navigation Banner */}
+              <div style={{
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: 8,
+                padding: "8px 14px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#166534"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <CornerDownLeft size={14} color="#15803d" />
+                  <span>
+                    <strong>Rapid Keyboard Mode:</strong> Press <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> to cycle through KYC fields and submit to proceed to Step 2.
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#15803d", fontWeight: 600 }}>
+                  <Sparkles size={13} />
+                  <span>Fast registration</span>
+                </div>
+              </div>
+
               <form onSubmit={handleSaveFarmer}>
                 <div className="field-grid">
                   <div className="field">
                     <span>Farmer Name <i>*</i></span>
                     <input
+                      ref={el => (step1Refs.current["farmer_name"] = el)}
                       type="text"
                       required
                       placeholder="e.g. Anilbhai"
                       value={farmerForm.farmer_name}
                       onChange={(e) => setFarmerForm({ ...farmerForm, farmer_name: e.target.value })}
+                      onKeyDown={(e) => handleStep1KeyDown(e, "farmer_name")}
                     />
                   </div>
 
                   <div className="field">
                     <span>Village / Residence <i>*</i></span>
                     <input
+                      ref={el => (step1Refs.current["village"] = el)}
                       type="text"
                       required
                       placeholder="e.g. Fetapura"
                       value={farmerForm.village}
                       onChange={(e) => setFarmerForm({ ...farmerForm, village: e.target.value })}
+                      onKeyDown={(e) => handleStep1KeyDown(e, "village")}
                     />
                   </div>
 
                   <div className="field">
                     <span>Vehicle Number</span>
                     <input
+                      ref={el => (step1Refs.current["vehicle_number"] = el)}
                       type="text"
                       placeholder="e.g. GJ 06 AA 1101"
                       value={farmerForm.vehicle_number}
                       onChange={(e) => setFarmerForm({ ...farmerForm, vehicle_number: e.target.value })}
+                      onKeyDown={(e) => handleStep1KeyDown(e, "vehicle_number")}
                     />
                   </div>
 
                   <div className="field">
                     <span>Contact Number</span>
                     <input
+                      ref={el => (step1Refs.current["contact_number"] = el)}
                       type="text"
                       placeholder="e.g. +91 98250 11001"
                       value={farmerForm.contact_number}
                       onChange={(e) => setFarmerForm({ ...farmerForm, contact_number: e.target.value })}
+                      onKeyDown={(e) => handleStep1KeyDown(e, "contact_number")}
                     />
                   </div>
 
                   <div className="field">
                     <span>Land Record (7/12)</span>
                     <input
+                      ref={el => (step1Refs.current["land_record"] = el)}
                       type="text"
                       placeholder="e.g. 7/12-101"
                       value={farmerForm.land_record}
                       onChange={(e) => setFarmerForm({ ...farmerForm, land_record: e.target.value })}
+                      onKeyDown={(e) => handleStep1KeyDown(e, "land_record")}
                     />
                   </div>
 
                   <div className="field">
                     <span>Aadhaar Card Number</span>
                     <input
+                      ref={el => (step1Refs.current["aadhaar_card_number"] = el)}
                       type="text"
                       placeholder="e.g. 2345 6789 0101"
                       value={farmerForm.aadhaar_card_number}
                       onChange={(e) => setFarmerForm({ ...farmerForm, aadhaar_card_number: e.target.value })}
+                      onKeyDown={(e) => handleStep1KeyDown(e, "aadhaar_card_number")}
                     />
                   </div>
                 </div>
 
                 <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                  <button type="submit" className="button primary">
+                  <button
+                    ref={el => (step1Refs.current["submit_btn"] = el)}
+                    type="submit"
+                    className="button primary"
+                  >
                     Save Farmer & Proceed to Step 2 <ArrowRight size={15} />
                   </button>
                 </div>
@@ -465,6 +630,29 @@ export default function TriplicateBillingPage() {
             <div className="brand-meta">
               <span>Bill No: <b>{billForm.bill_number}</b></span>
               <span>Date: <b>{billForm.bill_date}</b></span>
+            </div>
+          </div>
+
+          {/* Keyboard Quick Navigation Banner */}
+          <div style={{
+            background: "#f0fdf4",
+            borderBottom: "1px solid #bbf7d0",
+            padding: "8px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: 11,
+            color: "#166534"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <CornerDownLeft size={14} color="#15803d" />
+              <span>
+                <strong>Rapid Keyboard Mode:</strong> Press <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> to jump across Farmer → Village → Heap → Weights → Rate. Pressing <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> on <b>Rate</b> auto-fills notes and focuses Save!
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#15803d", fontWeight: 600 }}>
+              <Sparkles size={13} />
+              <span>Hands-free weighbridge entry</span>
             </div>
           </div>
 
@@ -532,27 +720,40 @@ export default function TriplicateBillingPage() {
                 <div className="entity-field">
                   <label>Seller Name *</label>
                   <input
+                    ref={el => (step2Refs.current["seller_name"] = el)}
                     type="text"
                     required
                     placeholder="Farmer Name"
                     value={billForm.seller_name}
-                    onChange={e => setBillForm({ ...billForm, seller_name: e.target.value })}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const matched = farmers.find(f => f.farmer_name.toLowerCase() === val.trim().toLowerCase());
+                      setBillForm(prev => ({
+                        ...prev,
+                        seller_name: val,
+                        seller_residence: matched ? matched.village : prev.seller_residence,
+                        vehicle_number: matched?.vehicle_number || prev.vehicle_number
+                      }));
+                    }}
+                    onKeyDown={e => handleStep2KeyDown(e, "seller_name")}
                     list="farmer-suggestions-triplicate"
                     style={{ fontWeight: 700 }}
                   />
                   <datalist id="farmer-suggestions-triplicate">
                     {farmers.map(f => (
-                      <option key={f.id} value={f.farmer_name}>{f.village}</option>
+                      <option key={f.id} value={f.farmer_name}>{f.village} {f.vehicle_number ? `(${f.vehicle_number})` : ""}</option>
                     ))}
                   </datalist>
                 </div>
                 <div className="entity-field">
                   <label>Residence (Village)</label>
                   <input
+                    ref={el => (step2Refs.current["seller_residence"] = el)}
                     type="text"
                     placeholder="Village"
                     value={billForm.seller_residence}
                     onChange={e => setBillForm({ ...billForm, seller_residence: e.target.value })}
+                    onKeyDown={e => handleStep2KeyDown(e, "seller_residence")}
                   />
                 </div>
               </div>
@@ -590,10 +791,12 @@ export default function TriplicateBillingPage() {
             <div className="meta-item">
               <label>Heap No.</label>
               <input
+                ref={el => (step2Refs.current["heap_number"] = el)}
                 type="text"
                 placeholder="e.g. 6"
                 value={billForm.heap_number}
                 onChange={e => setBillForm({ ...billForm, heap_number: e.target.value })}
+                onKeyDown={e => handleStep2KeyDown(e, "heap_number")}
                 style={{ textAlign: "center", fontWeight: 700 }}
               />
             </div>
@@ -611,10 +814,12 @@ export default function TriplicateBillingPage() {
             <div className="meta-item">
               <label>Vehicle Number</label>
               <input
+                ref={el => (step2Refs.current["vehicle_number"] = el)}
                 type="text"
                 placeholder="e.g. GJ 06 AA 1101"
                 value={billForm.vehicle_number}
                 onChange={e => setBillForm({ ...billForm, vehicle_number: e.target.value })}
+                onKeyDown={e => handleStep2KeyDown(e, "vehicle_number")}
               />
             </div>
 
@@ -644,11 +849,13 @@ export default function TriplicateBillingPage() {
               <div className="weigh-card">
                 <span className="weigh-card-label">1. Gr. Wt. (Qntl.)</span>
                 <input
+                  ref={el => (step2Refs.current["gross_weight"] = el)}
                   type="number"
                   step="0.01"
                   min="0"
                   value={billForm.gross_weight}
                   onChange={e => setBillForm({ ...billForm, gross_weight: e.target.value })}
+                  onKeyDown={e => handleStep2KeyDown(e, "gross_weight")}
                 />
                 <span className="weigh-card-sub">Loaded Vehicle</span>
               </div>
@@ -657,11 +864,13 @@ export default function TriplicateBillingPage() {
               <div className="weigh-card">
                 <span className="weigh-card-label">2. Tr. Wt. (Qntl.)</span>
                 <input
+                  ref={el => (step2Refs.current["tare_weight"] = el)}
                   type="number"
                   step="0.01"
                   min="0"
                   value={billForm.tare_weight}
                   onChange={e => setBillForm({ ...billForm, tare_weight: e.target.value })}
+                  onKeyDown={e => handleStep2KeyDown(e, "tare_weight")}
                 />
                 <span className="weigh-card-sub">Empty Vehicle</span>
               </div>
@@ -679,11 +888,13 @@ export default function TriplicateBillingPage() {
               <div className="weigh-card">
                 <span className="weigh-card-label">4. Rate/Qnt (₹)</span>
                 <input
+                  ref={el => (step2Refs.current["rate"] = el)}
                   type="number"
                   step="0.01"
                   min="0"
                   value={billForm.rate}
                   onChange={e => setBillForm({ ...billForm, rate: e.target.value })}
+                  onKeyDown={e => handleStep2KeyDown(e, "rate")}
                 />
                 <span className="weigh-card-sub">Agreed Rate</span>
               </div>
@@ -848,24 +1059,28 @@ export default function TriplicateBillingPage() {
                 <div className="entity-field">
                   <label>Labor / Hamali (₹)</label>
                   <input
+                    ref={el => (step2Refs.current["labor_charges"] = el)}
                     type="number"
                     step="0.01"
                     min="0"
                     placeholder="0"
                     value={billForm.labor_charges}
                     onChange={e => setBillForm({ ...billForm, labor_charges: e.target.value })}
+                    onKeyDown={e => handleStep2KeyDown(e, "labor_charges")}
                   />
                 </div>
 
                 <div className="entity-field">
                   <label>Vatav (Discount / Cess)</label>
                   <input
+                    ref={el => (step2Refs.current["vatav"] = el)}
                     type="number"
                     step="0.01"
                     min="0"
                     placeholder="0.00"
                     value={billForm.vatav}
                     onChange={e => setBillForm({ ...billForm, vatav: e.target.value })}
+                    onKeyDown={e => handleStep2KeyDown(e, "vatav")}
                   />
                 </div>
 
@@ -883,10 +1098,12 @@ export default function TriplicateBillingPage() {
                 <div className="entity-field" style={{ gridColumn: "1 / -1" }}>
                   <label>Remarks</label>
                   <input
+                    ref={el => (step2Refs.current["remarks"] = el)}
                     type="text"
                     placeholder="Consignment notes, quality grading..."
                     value={billForm.remarks}
                     onChange={e => setBillForm({ ...billForm, remarks: e.target.value })}
+                    onKeyDown={e => handleStep2KeyDown(e, "remarks")}
                   />
                 </div>
               </div>
@@ -934,7 +1151,11 @@ export default function TriplicateBillingPage() {
             </button>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="button secondary" onClick={() => handleSaveBill(false)}>
+              <button
+                ref={el => (step2Refs.current["save_btn"] = el)}
+                className="button secondary"
+                onClick={() => handleSaveBill(false)}
+              >
                 <Save size={15} /> Save Bill Without Printing
               </button>
               <button className="button primary" onClick={() => handleSaveBill(true)}>
@@ -973,6 +1194,17 @@ export default function TriplicateBillingPage() {
                 />
               </div>
 
+              {bills.length > 0 && (
+                <button
+                  className="button secondary"
+                  onClick={clearAllBills}
+                  title="Delete all bills and wipe register"
+                  style={{ borderColor: "#fca5a5", color: "#b91c1c" }}
+                >
+                  <Trash2 size={13} style={{ color: "#ef4444" }} /> Clear All History
+                </button>
+              )}
+
               <button className="button primary" onClick={() => setActiveStep(2)}>
                 <Plus size={14} /> New Triplicate Bill Entry
               </button>
@@ -980,54 +1212,78 @@ export default function TriplicateBillingPage() {
           </div>
 
           <div className="table-scroll">
-            <table className="modern-report-table">
-              <thead>
-                <tr>
-                  <th>Bill No</th>
-                  <th>Date & Time</th>
-                  <th>Seller (Farmer)</th>
-                  <th>Village</th>
-                  <th>Vehicle No</th>
-                  <th>Heap #</th>
-                  <th style={{ textAlign: "right" }}>Net Wt (qtl)</th>
-                  <th style={{ textAlign: "right" }}>Rate (₹)</th>
-                  <th style={{ textAlign: "right" }}>Net Amount (₹)</th>
-                  <th>Mode</th>
-                  <th style={{ textAlign: "center" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBills.map(b => (
-                  <tr key={b.id}>
-                    <td><strong style={{ color: "#0F172A" }}>{b.bill_number}</strong></td>
-                    <td>{b.bill_date}</td>
-                    <td><b>{b.seller_name}</b></td>
-                    <td>{b.village_name || b.seller_residence}</td>
-                    <td>{b.vehicle_number || "—"}</td>
-                    <td><span style={{ fontWeight: 700 }}>#{b.heap_number}</span></td>
-                    <td style={{ textAlign: "right", fontWeight: 700 }}>{Number(b.net_weight || 0).toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>₹{Number(b.rate || 0).toFixed(2)}</td>
-                    <td style={{ textAlign: "right", fontWeight: 800, color: "#1E293B" }}>
-                      ₹{Number(b.net_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td>
-                      <span className={`status-badge ${b.payment_mode === "CASH" ? "status-completed" : "status-pending"}`}>
-                        <i /> {b.payment_mode}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <button
-                        className="button secondary"
-                        style={{ padding: "5px 10px", fontSize: 10 }}
-                        onClick={() => generateTriplicateBillPdf(b)}
-                      >
-                        <Printer size={13} /> Print 3-Copy
-                      </button>
-                    </td>
+            {filteredBills.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
+                <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>No saved triplicate bills in registry.</p>
+                <p style={{ fontSize: 11, color: "#94a3b8" }}>Generate a new bill in Step 2 to record it in this register.</p>
+                <button
+                  className="button primary"
+                  onClick={() => setActiveStep(2)}
+                  style={{ marginTop: 12, display: "inline-flex" }}
+                >
+                  <Plus size={14} /> Create First Triplicate Bill
+                </button>
+              </div>
+            ) : (
+              <table className="modern-report-table">
+                <thead>
+                  <tr>
+                    <th>Bill No</th>
+                    <th>Date & Time</th>
+                    <th>Seller (Farmer)</th>
+                    <th>Village</th>
+                    <th>Vehicle No</th>
+                    <th>Heap #</th>
+                    <th style={{ textAlign: "right" }}>Net Wt (qtl)</th>
+                    <th style={{ textAlign: "right" }}>Rate (₹)</th>
+                    <th style={{ textAlign: "right" }}>Net Amount (₹)</th>
+                    <th>Mode</th>
+                    <th style={{ textAlign: "center" }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredBills.map(b => (
+                    <tr key={b.id}>
+                      <td><strong style={{ color: "#0F172A" }}>{b.bill_number}</strong></td>
+                      <td>{b.bill_date}</td>
+                      <td><b>{b.seller_name}</b></td>
+                      <td>{b.village_name || b.seller_residence}</td>
+                      <td>{b.vehicle_number || "—"}</td>
+                      <td><span style={{ fontWeight: 700 }}>#{b.heap_number}</span></td>
+                      <td style={{ textAlign: "right", fontWeight: 700 }}>{Number(b.net_weight || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}>₹{Number(b.rate || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 800, color: "#1E293B" }}>
+                        ₹{Number(b.net_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${b.payment_mode === "CASH" ? "status-completed" : "status-pending"}`}>
+                          <i /> {b.payment_mode}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                          <button
+                            className="button secondary"
+                            style={{ padding: "5px 10px", fontSize: 10 }}
+                            onClick={() => generateTriplicateBillPdf(b)}
+                          >
+                            <Printer size={13} /> Print 3-Copy
+                          </button>
+                          <button
+                            className="icon-button"
+                            style={{ color: "#ef4444" }}
+                            title="Delete Bill"
+                            onClick={() => deleteBill(b.id)}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

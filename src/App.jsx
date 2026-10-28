@@ -1,13 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity, ArrowDownToLine, ArrowLeft, ArrowRight, Bell, CalendarDays, Check,
   FileCheck2, FilePlus2, FileText, LayoutDashboard, LogOut, Menu,
   PackageCheck, Plus, Search, ShieldCheck, Truck, Users, X, Mail, MessageCircle,
-  Send
+  Send, Lock, KeyRound, Eye, EyeOff, Coins, Layers, Receipt, UserPlus, Scale, BarChart3,
+  CreditCard, CornerDownLeft, Sparkles
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import { generateContractPdf, generateGatePassPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
+import DailyPurchasePage from "./components/DailyPurchasePage";
+import TriplicateBillingPage from "./components/TriplicateBillingPage";
+import ProcurementReportsPage from "./components/ProcurementReportsPage";
 
 // MODULE 1: COTTON SEED (Strictly the 13 fields from PDF 1)
 const blankCottonSeed = {
@@ -25,6 +29,7 @@ const blankCottonSeed = {
   rate_per_quintal: "",                                 // 11. RATE PER QUINTALS
   packing_type: "LOOSE",                                // 12. PACKING TYPE :LOOSE/BAGS
   delivery_address: "",                                 // 13. DELIVERY ADDRESS
+  gst_rate: "5",                                        // USER EDITABLE GST RATE %
   status: "draft"
 };
 
@@ -46,6 +51,7 @@ const blankNetCotton = {
   payment_condition: "",                                // 13. PAYMENT CONDITION
   rate_per_candy: "",                                   // 14. RATE PER CANDY
   delivery_address: "",                                 // 15. DELIVERY ADDRESS
+  gst_rate: "5",                                        // USER EDITABLE GST RATE %
   status: "draft"
 };
 
@@ -60,53 +66,14 @@ const blankLoadingDetails = {
   lr_number: ""                // Lr no. (CS: #6, NC: #7)
 };
 
-const demoContracts = [
-  {
-    id: "demo-1",
-    module: "cotton_seed",
-    contract_number: "CS-2026-001",
-    contract_date: "2026-10-10",
-    party_name: "Shree Ganesh Agro Oil Mill",
-    gst_number: "24AAACG1234F1Z1",
-    party_address: "Kadi, Gujarat",
-    contact_number: "+91 98250 11111",
-    quantity: "250",
-    commodity: "COTTON SEED",
-    delivery_condition: "Ready Delivery (Ex-Factory)",
-    payment_condition: "Immediate on delivery / RTGS",
-    rate_per_quintal: 3650,
-    packing_type: "LOOSE",
-    delivery_address: "Plot 12, GIDC Kadi, Gujarat",
-    status: "confirmed"
-  },
-  {
-    id: "demo-2",
-    module: "net_cotton",
-    contract_number: "NC-2026-001",
-    contract_date: "2026-10-12",
-    party_name: "Patel Spinners & Textiles Ltd",
-    gst_number: "24AABCP5678K1Z5",
-    party_address: "Surat, Gujarat",
-    contact_number: "+91 98250 22222",
-    broker_name_and_firm_name: "Shrenik Shah (Shrenik Cotton Brokers)",
-    pr_no: "PR-104",
-    lot_no: "LOT-58",
-    quantity: "100 Bales (170 qtl)",
-    commodity: "COTTON BALES",
-    delivery_condition: "FOR Destination",
-    payment_condition: "Immediate upon delivery",
-    rate_per_candy: 58500,
-    delivery_address: "Surat Textile Park, Gujarat",
-    status: "loading"
-  }
-];
+const demoContracts = [];
 
 function useContracts(offlineOverride = false) {
   const [contracts, setContracts] = useState(() => {
     try {
-      const saved = localStorage.getItem("seedledger_contracts_v2");
-      return saved ? JSON.parse(saved) : demoContracts;
-    } catch { return demoContracts; }
+      const saved = localStorage.getItem("seedledger_contracts_v3");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -115,7 +82,7 @@ function useContracts(offlineOverride = false) {
   const setContractsAndPersist = (updater) => {
     setContracts(old => {
       const next = typeof updater === "function" ? updater(old) : updater;
-      try { localStorage.setItem("seedledger_contracts_v2", JSON.stringify(next)); } catch (e) {}
+      try { localStorage.setItem("seedledger_contracts_v3", JSON.stringify(next)); } catch (e) {}
       return next;
     });
   };
@@ -123,16 +90,32 @@ function useContracts(offlineOverride = false) {
   async function refresh() {
     if (demoMode) {
       try {
-        const saved = localStorage.getItem("seedledger_contracts_v2");
+        const saved = localStorage.getItem("seedledger_contracts_v3");
         if (saved) setContracts(JSON.parse(saved));
-      } catch (e) {}
+        else setContracts([]);
+      } catch (e) {
+        setContracts([]);
+      }
       return;
     }
-    const { data, error: queryError } = await supabase
-      .from("contracts").select("*").order("created_at", { ascending: false });
-    if (queryError) setError(queryError.message);
-    else if (data && data.length) setContracts(data);
-    setLoading(false);
+    try {
+      const { data: remoteData, error: queryError } = await supabase
+        .from("contracts").select("*").order("created_at", { ascending: false });
+      if (queryError) {
+        const saved = localStorage.getItem("seedledger_contracts_v3");
+        if (saved) setContracts(JSON.parse(saved));
+        else setContracts([]);
+        setError(queryError.message);
+      } else if (remoteData) {
+        setContracts(remoteData);
+      }
+    } catch (err) {
+      const saved = localStorage.getItem("seedledger_contracts_v3");
+      if (saved) setContracts(JSON.parse(saved));
+      else setContracts([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { if (demoMode) refresh(); }, []);
@@ -189,7 +172,10 @@ export default function App() {
     "/confirmations": "Step 2: Send to Buyer",
     "/loading": "Step 3: Loading Management",
     "/gate-passes": "Step 4: Gate Passes",
-    "/parties": "Parties"
+    "/parties": "Parties",
+    "/daily-purchase": "Cotton Daily Purchase",
+    "/triplicate-billing": "Triplicate Billing (Cash & Debit)",
+    "/procurement-reports": "Procurement & Heap Reports"
   })[location.pathname] || "Workspace";
 
   return (
@@ -237,6 +223,14 @@ export default function App() {
           <NavItem to="/loading" icon={<Truck size={18}/>} label="Step 3: Loading" onClick={() => setMobileOpen(false)} />
           <NavItem to="/gate-passes" icon={<PackageCheck size={18}/>} label="Step 4: Gate Passes" onClick={() => setMobileOpen(false)} />
           <NavItem to="/parties" icon={<Users size={18}/>} label="Parties" onClick={() => setMobileOpen(false)} />
+        </nav>
+
+        {/* MAKE DIFFER SECTION: FARMER PROCUREMENT */}
+        <div className="workspace-label" style={{ marginTop: 20, color: "#38bdf8" }}>FARMER PROCUREMENT</div>
+        <nav className="nav-list">
+          <NavItem to="/daily-purchase" icon={<Scale size={18}/>} label="Daily Purchase" onClick={() => setMobileOpen(false)} />
+          <NavItem to="/triplicate-billing" icon={<Receipt size={18}/>} label="Triplicate Billing" onClick={() => setMobileOpen(false)} />
+          <NavItem to="/procurement-reports" icon={<BarChart3 size={18}/>} label="Heap & Cash Reports" onClick={() => setMobileOpen(false)} />
         </nav>
 
         <div className="sidebar-bottom">
@@ -294,6 +288,9 @@ export default function App() {
             <Route path="/loading" element={<LoadingPage data={data} activeModule={activeModule} />} />
             <Route path="/gate-passes" element={<GatePasses data={data} activeModule={activeModule} />} />
             <Route path="/parties" element={<PartiesPage data={data} activeModule={activeModule} />} />
+            <Route path="/daily-purchase" element={<DailyPurchasePage />} />
+            <Route path="/triplicate-billing" element={<TriplicateBillingPage />} />
+            <Route path="/procurement-reports" element={<ProcurementReportsPage />} />
             <Route path="*" element={<Dashboard data={data} activeModule={activeModule} switchModule={switchModule} />} />
           </Routes>
         </div>
@@ -313,15 +310,118 @@ function NavItem({ to, icon, label, count, onClick }) {
 function Login({ onLogin, onOffline }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   async function submit(e) {
-    e.preventDefault(); setBusy(true); setError("");
+    e.preventDefault();
+    setBusy(true);
+    setError("");
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) setError(authError.message); else onLogin(data.session);
+    if (authError) {
+      setError(authError.message);
+    } else {
+      onLogin(data.session);
+    }
     setBusy(false);
   }
-  return <div className="login-page"><div className="login-decoration"><div className="login-orbit orbit-one"/><div className="login-orbit orbit-two"/><div className="login-copy"><div className="app-logo-badge"><img src="/logo.svg" alt="Shree Jagdamba" className="app-logo-img"/></div><p className="eyebrow">CONTRACT MANAGEMENT SYSTEM</p><h1>Module 1: Cotton Seed<br/>Module 2: Net Cotton</h1><p>Strictly per PDF specification: 4-step workflow, contract confirmation, and gate pass.</p><div className="login-feature"><ShieldCheck size={18}/> Authorized office access</div></div></div><div className="login-form-wrap"><form className="login-form" onSubmit={submit}><span className="eyebrow">WELCOME BACK</span><h2>Sign in to Shree Jagdamba</h2><p>Use your authorized office account to continue.</p><label>Email address<input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com"/></label><label>Password<input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password"/></label>{error && <div className="form-error">{error}</div>}<button className="button primary full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}<ArrowRight size={16}/></button>{onOffline && <button type="button" className="button secondary full" onClick={onOffline} style={{marginTop: 10, justifyContent: "center", fontWeight: 700}}>⚡ Enter Offline Workspace (Instant Demo)</button>}<small>Staff accounts must be created by an authorized administrator.</small></form></div></div>;
+
+  return (
+    <div className="login-wrapper">
+      <div className="login-card">
+        <div className="login-brand-header">
+          <div className="login-logo-container">
+            <img src="/logo.svg" alt="Shree Jagdamba" className="login-logo" />
+          </div>
+          <h1 className="login-title">Sign In</h1>
+          <p className="login-subtitle">Enter your credentials to access your account</p>
+        </div>
+
+        {error && (
+          <div className="login-error-alert" role="alert">
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form className="login-form-fields" onSubmit={submit} autoComplete="on">
+          <div className="login-field-group">
+            <label htmlFor="login-email">Email Address</label>
+            <div className="login-input-wrap">
+              <Mail size={18} className="login-input-icon" />
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="name@company.com"
+                disabled={busy}
+              />
+            </div>
+          </div>
+
+          <div className="login-field-group">
+            <label htmlFor="login-password">Password</label>
+            <div className="login-input-wrap">
+              <Lock size={18} className="login-input-icon" />
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                disabled={busy}
+              />
+              <button
+                type="button"
+                className="login-toggle-pw"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="login-submit-btn" disabled={busy}>
+            {busy ? (
+              <span>Signing in…</span>
+            ) : (
+              <>
+                <span>Sign In</span>
+                <ArrowRight size={17} />
+              </>
+            )}
+          </button>
+        </form>
+
+        {onOffline && (
+          <div className="login-offline-section">
+            <div className="login-divider">
+              <span>or</span>
+            </div>
+            <button
+              type="button"
+              className="login-offline-btn"
+              onClick={onOffline}
+            >
+              Demo Access (Offline Mode)
+            </button>
+          </div>
+        )}
+
+        <div className="login-card-footer">
+          <ShieldCheck size={14} />
+          <span>Secure Broker Office Workspace</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function PageHeading({ eyebrow, title, description, action }) {
@@ -538,32 +638,56 @@ function ContractTable({ contracts, onOpen, isNetCotton = false, compact = false
             <th>Date</th>
             <th>Quantity</th>
             {isNetCotton ? <th>Rate / Candy</th> : <th>Rate / Quintal</th>}
+            <th>Total Amount</th>
             {isNetCotton ? <th>PR / Lot</th> : <th>Packing</th>}
             <th>Status</th>
             {!compact && <th/>}
           </tr>
         </thead>
         <tbody>
-          {contracts.map(c => (
-            <tr key={c.id} onClick={() => onOpen && onOpen(c.id)} className={onOpen ? "clickable-row" : ""}>
-              <td><strong className="contract-code">{c.contract_number || "Draft"}</strong><small className="cell-sub">{c.commodity}</small></td>
-              <td><span className="party-cell">{c.party_name || "—"}</span></td>
-              <td>{c.contract_date || "—"}</td>
-              <td><strong>{c.quantity || "—"}</strong></td>
-              {isNetCotton ? (
-                <td>{c.rate_per_candy ? `₹${Number(c.rate_per_candy).toLocaleString("en-IN")}` : "—"}</td>
-              ) : (
-                <td>{c.rate_per_quintal ? `₹${Number(c.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</td>
-              )}
-              {isNetCotton ? (
-                <td><small style={{ fontWeight: 600, color: "#64748b" }}>{c.pr_no ? `PR: ${c.pr_no}` : ""} {c.lot_no ? `| Lot: ${c.lot_no}` : ""}</small></td>
-              ) : (
-                <td><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
-              )}
-              <td><StatusBadge status={c.status}/></td>
-              {!compact && <td><ArrowRight size={16} className="row-arrow"/></td>}
-            </tr>
-          ))}
+          {contracts.map(c => {
+            const rawQtyMatch = String(c.quantity || "").match(/[\d.]+/);
+            const qNum = rawQtyMatch ? parseFloat(rawQtyMatch[0]) : 0;
+            const rNum = isNetCotton ? (parseFloat(c.rate_per_candy) || 0) : (parseFloat(c.rate_per_quintal) || 0);
+            const gstR = parseFloat(c.gst_rate) >= 0 ? parseFloat(c.gst_rate) : 5;
+            const sub = qNum * rNum;
+            const totalWithGst = sub > 0 ? sub + (sub * (gstR / 100)) : 0;
+
+            return (
+              <tr key={c.id} onClick={() => onOpen && onOpen(c.id)} className={onOpen ? "clickable-row" : ""}>
+                <td>
+                  <strong className="contract-code">{c.contract_number || "Draft"}</strong>
+                  <small className="cell-sub">{c.commodity}</small>
+                </td>
+                <td><span className="party-cell" style={{ fontWeight: 600, color: "#0f172a" }}>{c.party_name || "—"}</span></td>
+                <td><span style={{ color: "#64748b", fontSize: 12.5 }}>{c.contract_date || "—"}</span></td>
+                <td><strong>{c.quantity || "—"}</strong></td>
+                {isNetCotton ? (
+                  <td>{c.rate_per_candy ? `₹${Number(c.rate_per_candy).toLocaleString("en-IN")}` : "—"}</td>
+                ) : (
+                  <td>{c.rate_per_quintal ? `₹${Number(c.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</td>
+                )}
+                <td>
+                  {totalWithGst > 0 ? (
+                    <strong style={{ color: "#16a34a", fontSize: 13 }}>
+                      ₹{Math.round(totalWithGst).toLocaleString("en-IN")}
+                    </strong>
+                  ) : "—"}
+                </td>
+                {isNetCotton ? (
+                  <td>
+                    <small style={{ fontWeight: 600, color: "#64748b" }}>
+                      {c.pr_no ? `PR: ${c.pr_no}` : ""} {c.lot_no ? `| Lot: ${c.lot_no}` : ""}
+                    </small>
+                  </td>
+                ) : (
+                  <td><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
+                )}
+                <td><StatusBadge status={c.status}/></td>
+                {!compact && <td><ArrowRight size={16} className="row-arrow"/></td>}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -585,6 +709,32 @@ function ContractForm({ data, activeModule }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // Rapid Keyboard Mode refs
+  const contractRefs = useRef({});
+
+  const handleContractKeyDown = (e, fieldName) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const netCottonOrder = [
+        "contract_date", "contract_number", "party_name", "gst_number", "party_address",
+        "contact_number", "broker_name_and_firm_name", "pr_no", "lot_no", "quantity",
+        "delivery_condition", "payment_condition", "rate_per_candy", "gst_rate", "delivery_address"
+      ];
+      const cottonSeedOrder = [
+        "contract_date", "contract_number", "party_name", "gst_number", "party_address",
+        "contact_number", "quantity", "delivery_condition", "payment_condition",
+        "rate_per_quintal", "gst_rate", "packing_type", "delivery_address"
+      ];
+      const order = isNetCotton ? netCottonOrder : cottonSeedOrder;
+      const idx = order.indexOf(fieldName);
+      if (idx !== -1 && idx < order.length - 1) {
+        contractRefs.current[order[idx + 1]]?.focus();
+      } else if (idx === order.length - 1) {
+        contractRefs.current["submit_step1_btn"]?.focus();
+      }
+    }
+  };
 
   useEffect(() => {
     setForm(isNetCotton ? { ...blankNetCotton } : { ...blankCottonSeed });
@@ -653,20 +803,62 @@ function ContractForm({ data, activeModule }) {
     }
 
     const user = (await supabase.auth.getUser()).data.user;
-    const { data: inserted, error: insertError } = await supabase
+
+    // Build payload compatible with Supabase schema (maps UI fields to DB columns)
+    const dbPayload = {
+      contract_number: generatedNumber,
+      contract_date: finalForm.contract_date || new Date().toLocaleDateString("en-CA"),
+      party_name: finalForm.party_name,
+      gst_number: finalForm.gst_number || null,
+      party_address: finalForm.party_address || null,
+      contact_number: finalForm.contact_number || null,
+      delivery_address: finalForm.delivery_address || "",
+      delivery_condition: finalForm.delivery_condition || "",
+      payment_condition: finalForm.payment_condition || "",
+      quantity_quintals: Number(parseFloat(finalForm.quantity) || 1),
+      rate_per_quintal: Number(parseFloat(finalForm.rate_per_quintal || finalForm.rate_per_candy) || 0),
+      packing_type: finalForm.packing_type || "LOOSE",
+      status: "confirmed",
+      created_by: user?.id,
+      // Broker fields if present
+      broker_name: finalForm.broker_name_and_firm_name || finalForm.broker_name || null,
+      // Net cotton specific fields
+      pr_number: finalForm.pr_no || null,
+      lot_number: finalForm.lot_no || null,
+      rate_per_candy: finalForm.rate_per_candy ? Number(finalForm.rate_per_candy) : null,
+      commodity: isNetCotton ? "COTTON BALES" : "COTTON SEED"
+    };
+
+    let inserted = null;
+    let insertError = null;
+
+    const res = await supabase
       .from("contracts")
-      .insert({ ...finalForm, created_by: user?.id, status: "confirmed" })
+      .insert(dbPayload)
       .select()
       .single();
 
+    inserted = res.data;
+    insertError = res.error;
+
+    // If Supabase table hasn't run the Net Cotton migration yet, save contract locally with full fields
     if (insertError) {
-      setError(insertError.message);
+      console.warn("Supabase insert encountered error, saving contract locally:", insertError.message);
+      const offlineContract = {
+        ...finalForm,
+        id: "local-" + Date.now(),
+        status: "confirmed"
+      };
+      data.setContracts(old => [offlineContract, ...old]);
+      generateContractPdf(offlineContract);
+      navigate(`/contracts/${offlineContract.id}?step=2`);
       setSaving(false);
       return;
     }
 
-    data.setContracts(old => [inserted, ...old]);
-    generateContractPdf(inserted);
+    const completeContract = { ...finalForm, ...inserted };
+    data.setContracts(old => [completeContract, ...old]);
+    generateContractPdf(completeContract);
     await data.refresh();
     navigate(`/contracts/${inserted.id}?step=2`);
     setSaving(false);
@@ -718,99 +910,332 @@ function ContractForm({ data, activeModule }) {
                 <span className="required-note">* Required</span>
               </div>
 
+              {/* Keyboard Quick Navigation Banner */}
+              <div style={{
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: 8,
+                padding: "8px 14px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#166534"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <CornerDownLeft size={14} color="#15803d" />
+                  <span>
+                    <strong>Rapid Keyboard Mode:</strong> Press <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> to jump across contract fields and proceed directly to Step 2!
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#15803d", fontWeight: 600 }}>
+                  <Sparkles size={13} />
+                  <span>Rapid desk entry</span>
+                </div>
+              </div>
+
               {isNetCotton ? (
                 /* MODULE 2: NET COTTON (15 EXACT FIELDS) */
                 <div className="field-grid">
                   <Field label="1. DATE" required>
-                    <input type="date" required value={form.contract_date} onChange={e => set("contract_date", e.target.value)}/>
+                    <input
+                      ref={el => (contractRefs.current["contract_date"] = el)}
+                      type="date"
+                      required
+                      value={form.contract_date}
+                      onChange={e => set("contract_date", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "contract_date")}
+                    />
                   </Field>
                   <Field label="2. CONTRACT NUMBER ." hint="Auto-generated if left blank">
-                    <input value={form.contract_number} onChange={e => set("contract_number", e.target.value)} placeholder="e.g. NC-2026-003"/>
+                    <input
+                      ref={el => (contractRefs.current["contract_number"] = el)}
+                      value={form.contract_number}
+                      onChange={e => set("contract_number", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "contract_number")}
+                      placeholder="e.g. NC-2026-003"
+                    />
                   </Field>
                   <Field label="3. PARTY NAME" required>
-                    <input required value={form.party_name} onChange={e => set("party_name", e.target.value)} placeholder="Enter Party Name"/>
+                    <input
+                      ref={el => (contractRefs.current["party_name"] = el)}
+                      required
+                      value={form.party_name}
+                      onChange={e => set("party_name", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "party_name")}
+                      placeholder="Enter Party Name"
+                    />
                   </Field>
                   <Field label="4. GST NUMBER">
-                    <input value={form.gst_number} onChange={e => set("gst_number", e.target.value)} placeholder="GST Number"/>
+                    <input
+                      ref={el => (contractRefs.current["gst_number"] = el)}
+                      value={form.gst_number}
+                      onChange={e => set("gst_number", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "gst_number")}
+                      placeholder="GST Number"
+                    />
                   </Field>
                   <Field label="5. ADDREESS" wide>
-                    <textarea rows="2" value={form.party_address} onChange={e => set("party_address", e.target.value)} placeholder="Full Party Address"/>
+                    <textarea
+                      ref={el => (contractRefs.current["party_address"] = el)}
+                      rows="2"
+                      value={form.party_address}
+                      onChange={e => set("party_address", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "party_address")}
+                      placeholder="Full Party Address"
+                    />
                   </Field>
                   <Field label="6. CONTACT NO.">
-                    <input value={form.contact_number} onChange={e => set("contact_number", e.target.value)} placeholder="+91 98765 43210"/>
+                    <input
+                      ref={el => (contractRefs.current["contact_number"] = el)}
+                      value={form.contact_number}
+                      onChange={e => set("contact_number", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "contact_number")}
+                      placeholder="+91 98765 43210"
+                    />
                   </Field>
                   <Field label="7. BROKER NAME AND FIRM NAME" wide>
-                    <input value={form.broker_name_and_firm_name || ""} onChange={e => set("broker_name_and_firm_name", e.target.value)} placeholder="e.g. Shrenik Shah (Shrenik Cotton Brokers)"/>
+                    <input
+                      ref={el => (contractRefs.current["broker_name_and_firm_name"] = el)}
+                      value={form.broker_name_and_firm_name || ""}
+                      onChange={e => set("broker_name_and_firm_name", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "broker_name_and_firm_name")}
+                      placeholder="e.g. Shrenik Shah (Shrenik Cotton Brokers)"
+                    />
                   </Field>
                   <Field label="8. PR NO .">
-                    <input value={form.pr_no || ""} onChange={e => set("pr_no", e.target.value)} placeholder="e.g. PR-105"/>
+                    <input
+                      ref={el => (contractRefs.current["pr_no"] = el)}
+                      value={form.pr_no || ""}
+                      onChange={e => set("pr_no", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "pr_no")}
+                      placeholder="e.g. PR-105"
+                    />
                   </Field>
                   <Field label="9. LOT NO.">
-                    <input value={form.lot_no || ""} onChange={e => set("lot_no", e.target.value)} placeholder="e.g. LOT-60"/>
+                    <input
+                      ref={el => (contractRefs.current["lot_no"] = el)}
+                      value={form.lot_no || ""}
+                      onChange={e => set("lot_no", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "lot_no")}
+                      placeholder="e.g. LOT-60"
+                    />
                   </Field>
                   <Field label="10. QUANTITY" required hint="e.g. 100 Bales (170 qtl)">
-                    <input required value={form.quantity} onChange={e => set("quantity", e.target.value)} placeholder="e.g. 100 Bales (170 qtl)"/>
+                    <input
+                      ref={el => (contractRefs.current["quantity"] = el)}
+                      required
+                      value={form.quantity}
+                      onChange={e => set("quantity", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "quantity")}
+                      placeholder="e.g. 100 Bales (170 qtl)"
+                    />
                   </Field>
                   <Field label="11. COMMODITY : COTTON BALES" required>
                     <input value="COTTON BALES" readOnly style={{ background: "#f8fafc", fontWeight: 700, color: "#1e293b" }}/>
                   </Field>
                   <Field label="12. DELIVERY CONDITION" required>
-                    <input required value={form.delivery_condition} onChange={e => set("delivery_condition", e.target.value)} placeholder="e.g. Ready Delivery / Ex-Factory / FOR"/>
+                    <input
+                      ref={el => (contractRefs.current["delivery_condition"] = el)}
+                      required
+                      value={form.delivery_condition}
+                      onChange={e => set("delivery_condition", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "delivery_condition")}
+                      placeholder="e.g. Ready Delivery / Ex-Factory / FOR"
+                    />
                   </Field>
                   <Field label="13. PAYMENT CONDITION" required>
-                    <input required value={form.payment_condition} onChange={e => set("payment_condition", e.target.value)} placeholder="e.g. Immediate / RTGS / 7 days"/>
+                    <input
+                      ref={el => (contractRefs.current["payment_condition"] = el)}
+                      required
+                      value={form.payment_condition}
+                      onChange={e => set("payment_condition", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "payment_condition")}
+                      placeholder="e.g. Immediate / RTGS / 7 days"
+                    />
                   </Field>
                   <Field label="14. RATE PER CANDY" required hint="Rate in ₹ per Candy">
-                    <input type="number" min="0" step="1" required value={form.rate_per_candy} onChange={e => set("rate_per_candy", e.target.value)} placeholder="e.g. 58500"/>
+                    <input
+                      ref={el => (contractRefs.current["rate_per_candy"] = el)}
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      value={form.rate_per_candy}
+                      onChange={e => set("rate_per_candy", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "rate_per_candy")}
+                      placeholder="e.g. 58500"
+                    />
+                  </Field>
+                  <Field label="GST RATE (%)" hint="Enter GST % (e.g. 5, 12, 18 or 0)">
+                    <input
+                      ref={el => (contractRefs.current["gst_rate"] = el)}
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={form.gst_rate ?? "5"}
+                      onChange={e => set("gst_rate", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "gst_rate")}
+                      placeholder="e.g. 5"
+                    />
                   </Field>
                   <Field label="15. DELIVERY ADDRESS" required wide>
-                    <textarea required rows="2" value={form.delivery_address} onChange={e => set("delivery_address", e.target.value)} placeholder="Delivery destination address"/>
+                    <textarea
+                      ref={el => (contractRefs.current["delivery_address"] = el)}
+                      required
+                      rows="2"
+                      value={form.delivery_address}
+                      onChange={e => set("delivery_address", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "delivery_address")}
+                      placeholder="Delivery destination address"
+                    />
                   </Field>
                 </div>
               ) : (
                 /* MODULE 1: COTTON SEED (13 EXACT FIELDS) */
                 <div className="field-grid">
                   <Field label="1. DATE" required>
-                    <input type="date" required value={form.contract_date} onChange={e => set("contract_date", e.target.value)}/>
+                    <input
+                      ref={el => (contractRefs.current["contract_date"] = el)}
+                      type="date"
+                      required
+                      value={form.contract_date}
+                      onChange={e => set("contract_date", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "contract_date")}
+                    />
                   </Field>
                   <Field label="2. CONTRACT NUMBER ." hint="Auto-generated if left blank">
-                    <input value={form.contract_number} onChange={e => set("contract_number", e.target.value)} placeholder="e.g. CS-2026-003"/>
+                    <input
+                      ref={el => (contractRefs.current["contract_number"] = el)}
+                      value={form.contract_number}
+                      onChange={e => set("contract_number", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "contract_number")}
+                      placeholder="e.g. CS-2026-003"
+                    />
                   </Field>
                   <Field label="3. PARTY NAME" required>
-                    <input required value={form.party_name} onChange={e => set("party_name", e.target.value)} placeholder="Enter Party Name"/>
+                    <input
+                      ref={el => (contractRefs.current["party_name"] = el)}
+                      required
+                      value={form.party_name}
+                      onChange={e => set("party_name", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "party_name")}
+                      placeholder="Enter Party Name"
+                    />
                   </Field>
                   <Field label="4. GST NUMBER">
-                    <input value={form.gst_number} onChange={e => set("gst_number", e.target.value)} placeholder="GST Number"/>
+                    <input
+                      ref={el => (contractRefs.current["gst_number"] = el)}
+                      value={form.gst_number}
+                      onChange={e => set("gst_number", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "gst_number")}
+                      placeholder="GST Number"
+                    />
                   </Field>
                   <Field label="5. ADDREESS" wide>
-                    <textarea rows="2" value={form.party_address} onChange={e => set("party_address", e.target.value)} placeholder="Full Party Address"/>
+                    <textarea
+                      ref={el => (contractRefs.current["party_address"] = el)}
+                      rows="2"
+                      value={form.party_address}
+                      onChange={e => set("party_address", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "party_address")}
+                      placeholder="Full Party Address"
+                    />
                   </Field>
                   <Field label="6. CONTACT NO.">
-                    <input value={form.contact_number} onChange={e => set("contact_number", e.target.value)} placeholder="+91 98765 43210"/>
+                    <input
+                      ref={el => (contractRefs.current["contact_number"] = el)}
+                      value={form.contact_number}
+                      onChange={e => set("contact_number", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "contact_number")}
+                      placeholder="+91 98765 43210"
+                    />
                   </Field>
                   <Field label="7. QUANTITY" required hint="Quantity in Quintals">
-                    <input type="number" min="0.01" step="0.01" required value={form.quantity} onChange={e => set("quantity", e.target.value)} placeholder="Quantity in Quintals"/>
+                    <input
+                      ref={el => (contractRefs.current["quantity"] = el)}
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      value={form.quantity}
+                      onChange={e => set("quantity", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "quantity")}
+                      placeholder="Quantity in Quintals"
+                    />
                   </Field>
                   <Field label="8. COMMODITY : COTTON SEED" required>
                     <input value="COTTON SEED" readOnly style={{ background: "#f8fafc", fontWeight: 700, color: "#1e293b" }}/>
                   </Field>
                   <Field label="9. DELIVERY CONDITION" required>
-                    <input required value={form.delivery_condition} onChange={e => set("delivery_condition", e.target.value)} placeholder="e.g. Ready Delivery / Ex-Factory"/>
+                    <input
+                      ref={el => (contractRefs.current["delivery_condition"] = el)}
+                      required
+                      value={form.delivery_condition}
+                      onChange={e => set("delivery_condition", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "delivery_condition")}
+                      placeholder="e.g. Ready Delivery / Ex-Factory"
+                    />
                   </Field>
                   <Field label="10. PAYMENT CONDITION" required>
-                    <input required value={form.payment_condition} onChange={e => set("payment_condition", e.target.value)} placeholder="e.g. Immediate on delivery / RTGS"/>
+                    <input
+                      ref={el => (contractRefs.current["payment_condition"] = el)}
+                      required
+                      value={form.payment_condition}
+                      onChange={e => set("payment_condition", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "payment_condition")}
+                      placeholder="e.g. Immediate on delivery / RTGS"
+                    />
                   </Field>
                   <Field label="11. RATE PER QUINTALS" required hint="Rate in ₹ per Quintal">
-                    <input type="number" min="0" step="0.01" required value={form.rate_per_quintal} onChange={e => set("rate_per_quintal", e.target.value)} placeholder="e.g. 3650.00"/>
+                    <input
+                      ref={el => (contractRefs.current["rate_per_quintal"] = el)}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={form.rate_per_quintal}
+                      onChange={e => set("rate_per_quintal", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "rate_per_quintal")}
+                      placeholder="e.g. 3650.00"
+                    />
+                  </Field>
+                  <Field label="GST RATE (%)" hint="Enter GST % (e.g. 5, 12, 18 or 0)">
+                    <input
+                      ref={el => (contractRefs.current["gst_rate"] = el)}
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={form.gst_rate ?? "5"}
+                      onChange={e => set("gst_rate", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "gst_rate")}
+                      placeholder="e.g. 5"
+                    />
                   </Field>
                   <Field label="12. PACKING TYPE :LOOSE/BAGS" required>
-                    <select value={form.packing_type} onChange={e => set("packing_type", e.target.value)}>
+                    <select
+                      ref={el => (contractRefs.current["packing_type"] = el)}
+                      value={form.packing_type}
+                      onChange={e => set("packing_type", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "packing_type")}
+                    >
                       <option value="LOOSE">LOOSE</option>
                       <option value="BAGS">BAGS</option>
                     </select>
                   </Field>
                   <Field label="13. DELIVERY ADDRESS" required wide>
-                    <textarea required rows="2" value={form.delivery_address} onChange={e => set("delivery_address", e.target.value)} placeholder="Delivery destination address"/>
+                    <textarea
+                      ref={el => (contractRefs.current["delivery_address"] = el)}
+                      required
+                      rows="2"
+                      value={form.delivery_address}
+                      onChange={e => set("delivery_address", e.target.value)}
+                      onKeyDown={e => handleContractKeyDown(e, "delivery_address")}
+                      placeholder="Delivery destination address"
+                    />
                   </Field>
                 </div>
               )}
@@ -826,15 +1251,57 @@ function ContractForm({ data, activeModule }) {
               <h3>{moduleName} Summary</h3>
               <p>Proceed to Step 2 to generate the contract PDF and send to the buyer.</p>
               <div className="preview-line"/>
-              <div className="preview-row"><span>Party</span><strong>{form.party_name || "—"}</strong></div>
-              <div className="preview-row"><span>Commodity</span><strong>{isNetCotton ? "COTTON BALES" : "COTTON SEED"}</strong></div>
-              <div className="preview-row"><span>Quantity</span><strong>{form.quantity || "—"}</strong></div>
-              {isNetCotton ? (
-                <div className="preview-row"><span>Rate/Candy</span><strong>{form.rate_per_candy ? `₹${form.rate_per_candy}` : "—"}</strong></div>
-              ) : (
-                <div className="preview-row"><span>Rate/Qtl</span><strong>{form.rate_per_quintal ? `₹${form.rate_per_quintal}` : "—"}</strong></div>
-              )}
-              <button type="submit" className="button primary full" style={{ marginTop: 16 }}>
+              {/* Live Calculations using user entered GST % */}
+              {(() => {
+                // If user enters "100 Bales" or "100 Bales (170 qtl)" or "100", extract the primary numeric quantity
+                const rawQtyMatch = String(form.quantity || "").match(/[\d.]+/);
+                const qtyNum = rawQtyMatch ? parseFloat(rawQtyMatch[0]) : 0;
+                const rateNum = isNetCotton ? (parseFloat(form.rate_per_candy) || 0) : (parseFloat(form.rate_per_quintal) || 0);
+                const gstRateNum = parseFloat(form.gst_rate) >= 0 ? parseFloat(form.gst_rate) : 5;
+                const subtotal = qtyNum * rateNum;
+                const gstAmount = subtotal * (gstRateNum / 100);
+                const grandTotal = subtotal + gstAmount;
+
+                return (
+                  <>
+                    <div className="preview-row"><span>Party</span><strong>{form.party_name || "—"}</strong></div>
+                    <div className="preview-row"><span>Commodity</span><strong>{isNetCotton ? "COTTON BALES" : "COTTON SEED"}</strong></div>
+                    <div className="preview-row"><span>Quantity</span><strong>{form.quantity || "—"}</strong></div>
+                    {isNetCotton ? (
+                      <div className="preview-row"><span>Rate / Candy</span><strong>{form.rate_per_candy ? `₹${Number(form.rate_per_candy).toLocaleString("en-IN")}` : "—"}</strong></div>
+                    ) : (
+                      <div className="preview-row"><span>Rate / Qtl</span><strong>{form.rate_per_quintal ? `₹${Number(form.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</strong></div>
+                    )}
+                    <div className="preview-row"><span>GST Rate</span><strong>{gstRateNum}%</strong></div>
+
+                    {subtotal > 0 && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #cbd5e1" }}>
+                        <div className="preview-row">
+                          <span>Base Amount</span>
+                          <strong>₹{subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        </div>
+                        <div className="preview-row" style={{ color: "#64748b", fontSize: 11.5 }}>
+                          <span>GST ({gstRateNum}%)</span>
+                          <span>+ ₹{gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="preview-row" style={{ marginTop: 8, paddingTop: 10, borderTop: "2px solid #0f172a", fontSize: 14 }}>
+                          <span style={{ fontWeight: 800, color: "#0f172a" }}>Total Payment Amount</span>
+                          <strong style={{ color: "#16a34a", fontSize: 16, fontWeight: 800 }}>
+                            ₹{grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </strong>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              <button
+                ref={el => (contractRefs.current["submit_step1_btn"] = el)}
+                type="submit"
+                className="button primary full"
+                style={{ marginTop: 16 }}
+              >
                 Next: Step 2 Send to Buyer <ArrowRight size={16}/>
               </button>
             </div>
@@ -868,10 +1335,26 @@ function ContractForm({ data, activeModule }) {
               <Detail label={isNetCotton ? "12. DELIVERY CONDITION" : "9. DELIVERY CONDITION"} value={form.delivery_condition}/>
               <Detail label={isNetCotton ? "13. PAYMENT CONDITION" : "10. PAYMENT CONDITION"} value={form.payment_condition}/>
               {isNetCotton ? (
-                <Detail label="14. RATE PER CANDY" value={form.rate_per_candy ? `₹${form.rate_per_candy} / Candy` : "—"}/>
+                <Detail label="14. RATE PER CANDY" value={form.rate_per_candy ? `₹${Number(form.rate_per_candy).toLocaleString("en-IN")} / Candy` : "—"}/>
               ) : (
-                <Detail label="11. RATE PER QUINTALS" value={form.rate_per_quintal ? `₹${form.rate_per_quintal} / Quintal` : "—"}/>
+                <Detail label="11. RATE PER QUINTALS" value={form.rate_per_quintal ? `₹${Number(form.rate_per_quintal).toLocaleString("en-IN")} / Quintal` : "—"}/>
               )}
+              {(() => {
+                const rawQtyMatch = String(form.quantity || "").match(/[\d.]+/);
+                const qtyNum = rawQtyMatch ? parseFloat(rawQtyMatch[0]) : 0;
+                const rateNum = isNetCotton ? (parseFloat(form.rate_per_candy) || 0) : (parseFloat(form.rate_per_quintal) || 0);
+                const gstRateNum = parseFloat(form.gst_rate) >= 0 ? parseFloat(form.gst_rate) : 5;
+                const subtotal = qtyNum * rateNum;
+                const gstAmount = subtotal * (gstRateNum / 100);
+                const grandTotal = subtotal + gstAmount;
+                if (subtotal <= 0) return null;
+                return (
+                  <>
+                    <Detail label="ESTIMATED BASE AMOUNT" value={`₹${subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}/>
+                    <Detail label={`TOTAL PAYMENT VALUE (INCL. ${gstRateNum}% GST)`} value={`₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}/>
+                  </>
+                );
+              })()}
               {!isNetCotton && <Detail label="12. PACKING TYPE :LOOSE/BAGS" value={form.packing_type}/>}
               <Detail label={isNetCotton ? "15. DELIVERY ADDRESS" : "13. DELIVERY ADDRESS"} value={form.delivery_address}/>
             </div>
@@ -944,6 +1427,24 @@ function ContractDetail({ data }) {
   const initialStep = Number(searchParams.get("step")) || 1;
   const [currentStep, setCurrentStep] = useState(initialStep);
 
+  // Rapid Keyboard Mode refs for Loading Details
+  const loadingRefs = useRef({});
+
+  const handleLoadingKeyDown = (e, fieldName) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const order = isNetCotton
+        ? ["vehicle_number", "net_weight_quintals", "driver_license_number", "driver_contact_number", "transport_number", "transport_name", "lr_number"]
+        : ["vehicle_number", "net_weight_quintals", "driver_license_number", "transport_number", "transport_name", "lr_number"];
+      const idx = order.indexOf(fieldName);
+      if (idx !== -1 && idx < order.length - 1) {
+        loadingRefs.current[order[idx + 1]]?.focus();
+      } else if (idx === order.length - 1) {
+        loadingRefs.current["submit_loading_btn"]?.focus();
+      }
+    }
+  };
+
   useEffect(() => {
     const s = Number(searchParams.get("step")) || 1;
     setCurrentStep(s);
@@ -977,7 +1478,7 @@ function ContractDetail({ data }) {
     if (e) e.preventDefault();
     setMessage("");
 
-    if (data.demoMode) {
+    if (data.demoMode || String(contract.id).startsWith("local-") || String(contract.id).startsWith("offline-")) {
       localStorage.setItem("seedledger_loading_" + contract.id, JSON.stringify(loading));
       data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "loading" } : c));
       setMessage("Step 3: Loading details saved successfully.");
@@ -992,7 +1493,13 @@ function ContractDetail({ data }) {
       net_weight_quintals: Number(loading.net_weight_quintals)
     };
     const { error } = await supabase.from("loading_details").upsert(payload, { onConflict: "contract_id" });
-    if (error) { setMessage(error.message); return; }
+    if (error) {
+      console.warn("Saving loading details locally due to:", error.message);
+      localStorage.setItem("seedledger_loading_" + contract.id, JSON.stringify(loading));
+      data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "loading" } : c));
+      setMessage("Step 3: Loading details saved successfully.");
+      return;
+    }
     await supabase.from("contracts").update({ status: "loading" }).eq("id", contract.id);
     setMessage("Step 3: Loading details saved.");
     data.refresh();
@@ -1008,7 +1515,7 @@ function ContractDetail({ data }) {
     const prefix = isNetCotton ? "GP-NC" : "GP-CS";
     const gateNum = `${prefix}-2026-` + Math.floor(1000 + Math.random() * 9000);
 
-    if (data.demoMode) {
+    if (data.demoMode || String(contract.id).startsWith("local-") || String(contract.id).startsWith("offline-")) {
       generateGatePassPdf(contract, loading, gateNum);
       data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "completed" } : c));
       setMessage(`Step 4: Gate Pass ${gateNum} generated and downloaded with all details!`);
@@ -1136,6 +1643,23 @@ function ContractDetail({ data }) {
             ) : (
               <Detail label="11. RATE PER QUINTALS" value={contract.rate_per_quintal ? `₹${Number(contract.rate_per_quintal).toLocaleString("en-IN")}` : "—"}/>
             )}
+            <Detail label="GST RATE (%)" value={contract.gst_rate ? `${contract.gst_rate}%` : "5%"}/>
+            {(() => {
+              const rawQtyMatch = String(contract.quantity || "").match(/[\d.]+/);
+              const qtyNum = rawQtyMatch ? parseFloat(rawQtyMatch[0]) : 0;
+              const rateNum = isNetCotton ? (parseFloat(contract.rate_per_candy) || 0) : (parseFloat(contract.rate_per_quintal) || 0);
+              const gstRateNum = parseFloat(contract.gst_rate) >= 0 ? parseFloat(contract.gst_rate) : 5;
+              const subtotal = qtyNum * rateNum;
+              const gstAmount = subtotal * (gstRateNum / 100);
+              const grandTotal = subtotal + gstAmount;
+              if (subtotal <= 0) return null;
+              return (
+                <>
+                  <Detail label="BASE AMOUNT" value={`₹${subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}/>
+                  <Detail label={`TOTAL PAYMENT VALUE (INCL. ${gstRateNum}% GST)`} value={`₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}/>
+                </>
+              );
+            })()}
             {!isNetCotton && <Detail label="12. PACKING TYPE :LOOSE/BAGS" value={contract.packing_type}/>}
             <Detail label={isNetCotton ? "15. DELIVERY ADDRESS" : "13. DELIVERY ADDRESS"} value={contract.delivery_address}/>
           </div>
@@ -1173,32 +1697,113 @@ function ContractDetail({ data }) {
             </div>
           ) : (
             <div style={{ padding: "0 21px 20px" }}>
+              {/* Keyboard Quick Navigation Banner */}
+              <div style={{
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: 8,
+                padding: "8px 14px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#166534"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <CornerDownLeft size={14} color="#15803d" />
+                  <span>
+                    <strong>Rapid Keyboard Mode:</strong> Press <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> to cycle through truck, weight, and driver details to save!
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#15803d", fontWeight: 600 }}>
+                  <Sparkles size={13} />
+                  <span>Gate pass entry</span>
+                </div>
+              </div>
+
               <form className="loading-form" onSubmit={saveLoading} style={{ padding: 0 }}>
                 <Field label="1. Truck /tempo number" required>
-                  <input required value={loading.vehicle_number || ""} onChange={e => setLoading({...loading, vehicle_number: e.target.value})} placeholder="e.g. GJ 06 AB 1234"/>
+                  <input
+                    ref={el => (loadingRefs.current["vehicle_number"] = el)}
+                    required
+                    value={loading.vehicle_number || ""}
+                    onChange={e => setLoading({...loading, vehicle_number: e.target.value})}
+                    onKeyDown={e => handleLoadingKeyDown(e, "vehicle_number")}
+                    placeholder="e.g. GJ 06 AB 1234"
+                  />
                 </Field>
                 <Field label="2. Net Weight quintals" required>
-                  <input type="number" min="0.01" step="0.01" required value={loading.net_weight_quintals || ""} onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})} placeholder="Net Weight in Quintals"/>
+                  <input
+                    ref={el => (loadingRefs.current["net_weight_quintals"] = el)}
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    value={loading.net_weight_quintals || ""}
+                    onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})}
+                    onKeyDown={e => handleLoadingKeyDown(e, "net_weight_quintals")}
+                    placeholder="Net Weight in Quintals"
+                  />
                 </Field>
                 <Field label="3. Driver license no." required>
-                  <input required value={loading.driver_license_number || ""} onChange={e => setLoading({...loading, driver_license_number: e.target.value})} placeholder="Driver license number"/>
+                  <input
+                    ref={el => (loadingRefs.current["driver_license_number"] = el)}
+                    required
+                    value={loading.driver_license_number || ""}
+                    onChange={e => setLoading({...loading, driver_license_number: e.target.value})}
+                    onKeyDown={e => handleLoadingKeyDown(e, "driver_license_number")}
+                    placeholder="Driver license number"
+                  />
                 </Field>
                 {isNetCotton && (
                   <Field label="4. Driver contact number" required>
-                    <input required value={loading.driver_contact_number || ""} onChange={e => setLoading({...loading, driver_contact_number: e.target.value})} placeholder="+91 98765 43210"/>
+                    <input
+                      ref={el => (loadingRefs.current["driver_contact_number"] = el)}
+                      required
+                      value={loading.driver_contact_number || ""}
+                      onChange={e => setLoading({...loading, driver_contact_number: e.target.value})}
+                      onKeyDown={e => handleLoadingKeyDown(e, "driver_contact_number")}
+                      placeholder="+91 98765 43210"
+                    />
                   </Field>
                 )}
                 <Field label={isNetCotton ? "5. Transport no." : "4. Transport no."}>
-                  <input value={loading.transport_number || ""} onChange={e => setLoading({...loading, transport_number: e.target.value})} placeholder="Transport registration / permit no."/>
+                  <input
+                    ref={el => (loadingRefs.current["transport_number"] = el)}
+                    value={loading.transport_number || ""}
+                    onChange={e => setLoading({...loading, transport_number: e.target.value})}
+                    onKeyDown={e => handleLoadingKeyDown(e, "transport_number")}
+                    placeholder="Transport registration / permit no."
+                  />
                 </Field>
                 <Field label={isNetCotton ? "6. Transporter name" : "5. Transport name"} required>
-                  <input required value={loading.transport_name || ""} onChange={e => setLoading({...loading, transport_name: e.target.value})} placeholder="Transport company name"/>
+                  <input
+                    ref={el => (loadingRefs.current["transport_name"] = el)}
+                    required
+                    value={loading.transport_name || ""}
+                    onChange={e => setLoading({...loading, transport_name: e.target.value})}
+                    onKeyDown={e => handleLoadingKeyDown(e, "transport_name")}
+                    placeholder="Transport company name"
+                  />
                 </Field>
                 <Field label={isNetCotton ? "7. LR no." : "6. Lr no."} required>
-                  <input required value={loading.lr_number || ""} onChange={e => setLoading({...loading, lr_number: e.target.value})} placeholder="Lorry receipt number"/>
+                  <input
+                    ref={el => (loadingRefs.current["lr_number"] = el)}
+                    required
+                    value={loading.lr_number || ""}
+                    onChange={e => setLoading({...loading, lr_number: e.target.value})}
+                    onKeyDown={e => handleLoadingKeyDown(e, "lr_number")}
+                    placeholder="Lorry receipt number"
+                  />
                 </Field>
 
-                <button className="button primary full"><Check size={16}/> Save Step 3 Loading Details</button>
+                <button
+                  ref={el => (loadingRefs.current["submit_loading_btn"] = el)}
+                  className="button primary full"
+                >
+                  <Check size={16}/> Save Step 3 Loading Details
+                </button>
               </form>
             </div>
           )}

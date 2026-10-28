@@ -25,18 +25,28 @@ export default function ProcurementReportsPage() {
   const [bills] = useState(() => getLocalTriplicateBills());
   const [dailyPurchases] = useState(() => getLocalDailyPurchases());
 
-  // Authentic benchmark data matching Page 8 exactly
-  const benchmarkHeapData = [
-    { heap_number: "6", net_weight: 831.45, amount: 6265372.70, avg_rate: 7535.48 },
-    { heap_number: "7", net_weight: 6555.15, amount: 51576975.09, avg_rate: 7868.16 },
-    { heap_number: "8", net_weight: 3353.65, amount: 27563748.30, avg_rate: 8219.03 },
-    { heap_number: "9", net_weight: 1314.70, amount: 10201705.20, avg_rate: 7759.72 },
-    { heap_number: "10", net_weight: 3107.50, amount: 26771848.30, avg_rate: 8615.24 },
-    { heap_number: "11", net_weight: 109.10, amount: 885150.10, avg_rate: 8113.20 },
-    { heap_number: "12", net_weight: 491.00, amount: 4052387.30, avg_rate: 8253.33 },
-    { heap_number: "13", net_weight: 135.20, amount: 1069476.95, avg_rate: 7910.33 },
-    { heap_number: "14", net_weight: 15.10, amount: 114107.45, avg_rate: 7556.78 }
-  ];
+  // Dynamic heap aggregation directly from user-created bills (starts completely blank)
+  const dynamicHeapData = useMemo(() => {
+    const heapMap = {};
+    bills.forEach(b => {
+      const hNo = String(b.heap_number || "Unassigned").trim();
+      if (!heapMap[hNo]) {
+        heapMap[hNo] = { heap_number: hNo, net_weight: 0, amount: 0, count: 0 };
+      }
+      const wt = Number(b.net_weight || 0);
+      const amt = Number(b.net_amount || (wt * Number(b.rate || 0)));
+      heapMap[hNo].net_weight += wt;
+      heapMap[hNo].amount += amt;
+      heapMap[hNo].count += 1;
+    });
+
+    return Object.values(heapMap).map(h => ({
+      ...h,
+      avg_rate: h.net_weight > 0 ? h.amount / h.net_weight : 0
+    })).sort((a, b) => a.heap_number.localeCompare(b.heap_number, undefined, { numeric: true }));
+  }, [bills]);
+
+  const activeHeapDataset = dynamicHeapData;
 
   // Cash bills filter
   const cashBills = useMemo(() => {
@@ -66,16 +76,16 @@ export default function ProcurementReportsPage() {
 
   // Heap-wise filtered data
   const filteredHeapList = useMemo(() => {
-    if (selectedHeap === "ALL") return benchmarkHeapData;
-    return benchmarkHeapData.filter(h => h.heap_number === selectedHeap);
-  }, [selectedHeap]);
+    if (selectedHeap === "ALL") return activeHeapDataset;
+    return activeHeapDataset.filter(h => h.heap_number === selectedHeap);
+  }, [selectedHeap, activeHeapDataset]);
 
   const heapTotals = useMemo(() => {
     let weight = 0;
     let amount = 0;
     filteredHeapList.forEach(h => {
-      weight += h.net_weight;
-      amount += h.amount;
+      weight += Number(h.net_weight || 0);
+      amount += Number(h.amount || 0);
     });
     const avg = weight > 0 ? amount / weight : 0;
     return { weight, amount, avg };
@@ -111,10 +121,10 @@ export default function ProcurementReportsPage() {
     <div className="procurement-reports-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">FARMER PROCUREMENT ("DIFFER SECTION")</div>
+          <div className="eyebrow">FARMER PROCUREMENT SECTION</div>
           <h1>Procurement Registers & Heap Analytics</h1>
           <p>
-            Container-wise reporting for Cash Register (Page 6), Debit Register (Page 6), and Heap-Wise Average Outturn Report (Page 8).
+            Summary registers for Cash purchases, Debit purchases, and Heap-wise average rate outturn.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
@@ -259,7 +269,7 @@ export default function ProcurementReportsPage() {
           </div>
 
           <div className="modern-procurement-card">
-            <div className="factory-brand-strip">
+            <div className="factory-brand-strip" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div className="brand-left">
                 <span className="brand-badge">HEAP ANALYTICS</span>
                 <div>
@@ -267,52 +277,61 @@ export default function ProcurementReportsPage() {
                   <p>SHREE JAGDAMBA COTTON G AND P FACTORY (HANDOD)</p>
                 </div>
               </div>
-              <div className="brand-meta">
-                <span>Period: <b>{fromDate} To {toDate}</b></span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="brand-meta" style={{ textAlign: "right" }}>
+                  <span>Period: <b>{fromDate} To {toDate}</b></span>
+                </div>
               </div>
             </div>
 
             <div className="table-scroll">
-              <table className="modern-report-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 140 }}>Heap No.</th>
-                    <th style={{ textAlign: "right" }}>Net Weight (qtl)</th>
-                    <th style={{ textAlign: "right" }}>Total Amount (₹)</th>
-                    <th style={{ textAlign: "right", width: 220 }}>Average Rate (₹ / qtl)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredHeapList.map(h => (
-                    <tr key={h.heap_number}>
-                      <td>
-                        <strong style={{ color: "#0F172A", fontSize: 13 }}>
-                          Heap #{h.heap_number}
-                        </strong>
-                      </td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>
-                        {h.net_weight.toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: "right", fontWeight: 600 }}>
-                        ₹{h.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </td>
-                      <td style={{ textAlign: "right", fontWeight: 800, color: "#B45309", fontSize: 13 }}>
-                        ₹{h.avg_rate.toFixed(2)}
+              {filteredHeapList.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "50px 20px", color: "#64748b" }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>No heaps recorded in active factory register.</p>
+                  <p style={{ fontSize: 11, color: "#94a3b8" }}>Heaps are automatically compiled as you generate Triplicate Bills for arriving farmer lots.</p>
+                </div>
+              ) : (
+                <table className="modern-report-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 140 }}>Heap No.</th>
+                      <th style={{ textAlign: "right" }}>Net Weight (qtl)</th>
+                      <th style={{ textAlign: "right" }}>Total Amount (₹)</th>
+                      <th style={{ textAlign: "right", width: 220 }}>Average Rate (₹ / qtl)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHeapList.map(h => (
+                      <tr key={h.heap_number}>
+                        <td>
+                          <strong style={{ color: "#0F172A", fontSize: 13 }}>
+                            Heap #{h.heap_number}
+                          </strong>
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: 700 }}>
+                          {Number(h.net_weight || 0).toFixed(2)}
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: 600 }}>
+                          ₹{Number(h.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: 800, color: "#B45309", fontSize: 13 }}>
+                          ₹{Number(h.avg_rate || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="modern-report-footer">
+                      <td>TOTAL / FACTORY WEIGHTED AVERAGE:</td>
+                      <td style={{ textAlign: "right" }}>{heapTotals.weight.toFixed(2)} qtl</td>
+                      <td style={{ textAlign: "right" }}>₹{heapTotals.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ textAlign: "right", color: "#B45309", fontSize: 14 }}>
+                        ₹{heapTotals.avg.toFixed(2)} / qtl
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="modern-report-footer">
-                    <td>TOTAL / FACTORY WEIGHTED AVERAGE:</td>
-                    <td style={{ textAlign: "right" }}>{heapTotals.weight.toFixed(2)} qtl</td>
-                    <td style={{ textAlign: "right" }}>₹{heapTotals.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                    <td style={{ textAlign: "right", color: "#B45309", fontSize: 14 }}>
-                      ₹{heapTotals.avg.toFixed(2)} / qtl
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </tfoot>
+                </table>
+              )}
             </div>
           </div>
         </div>
@@ -335,46 +354,53 @@ export default function ProcurementReportsPage() {
           </div>
 
           <div className="table-scroll">
-            <table className="modern-report-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 50 }}>SrNo</th>
-                  <th style={{ width: 90 }}>TNo.</th>
-                  <th>Name (Farmer)</th>
-                  <th>Residence (Village)</th>
-                  <th>Date</th>
-                  <th style={{ textAlign: "right" }}>Net Wt (qtl)</th>
-                  <th style={{ textAlign: "right" }}>Rate (₹)</th>
-                  <th style={{ textAlign: "right" }}>Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cashBills.map((b, idx) => (
-                  <tr key={b.id || idx}>
-                    <td>{idx + 1}</td>
-                    <td><b>{b.bill_number}</b></td>
-                    <td><b>{b.seller_name}</b></td>
-                    <td>{b.village_name || b.seller_residence}</td>
-                    <td>{b.bill_date}</td>
-                    <td style={{ textAlign: "right", fontWeight: 700 }}>{Number(b.net_weight || 0).toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>₹{Number(b.rate || 0).toFixed(2)}</td>
-                    <td style={{ textAlign: "right", fontWeight: 800, color: "#15803D" }}>
-                      ₹{Number(b.net_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            {cashBills.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
+                <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>No cash purchase vouchers recorded.</p>
+                <p style={{ fontSize: 11, color: "#94a3b8" }}>Cash disbursements will appear here as you generate Cash Triplicate Bills in Step 2.</p>
+              </div>
+            ) : (
+              <table className="modern-report-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 50 }}>SrNo</th>
+                    <th style={{ width: 90 }}>TNo.</th>
+                    <th>Name (Farmer)</th>
+                    <th>Residence (Village)</th>
+                    <th>Date</th>
+                    <th style={{ textAlign: "right" }}>Net Wt (qtl)</th>
+                    <th style={{ textAlign: "right" }}>Rate (₹)</th>
+                    <th style={{ textAlign: "right" }}>Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cashBills.map((b, idx) => (
+                    <tr key={b.id || idx}>
+                      <td>{idx + 1}</td>
+                      <td><b>{b.bill_number}</b></td>
+                      <td><b>{b.seller_name}</b></td>
+                      <td>{b.village_name || b.seller_residence}</td>
+                      <td>{b.bill_date}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700 }}>{Number(b.net_weight || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}>₹{Number(b.rate || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 800, color: "#15803D" }}>
+                        ₹{Number(b.net_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="modern-report-footer">
+                    <td colSpan={5}>TOTAL CASH DISBURSED:</td>
+                    <td style={{ textAlign: "right" }}>{cashTotals.weight.toFixed(2)} qtl</td>
+                    <td style={{ textAlign: "right" }}>₹{cashTotals.avg.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", color: "#15803D", fontSize: 13 }}>
+                      ₹{cashTotals.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="modern-report-footer">
-                  <td colSpan={5}>TOTAL CASH DISBURSED:</td>
-                  <td style={{ textAlign: "right" }}>{cashTotals.weight.toFixed(2)} qtl</td>
-                  <td style={{ textAlign: "right" }}>₹{cashTotals.avg.toFixed(2)}</td>
-                  <td style={{ textAlign: "right", color: "#15803D", fontSize: 13 }}>
-                    ₹{cashTotals.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -396,46 +422,53 @@ export default function ProcurementReportsPage() {
           </div>
 
           <div className="table-scroll">
-            <table className="modern-report-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 50 }}>SrNo</th>
-                  <th style={{ width: 90 }}>TNo.</th>
-                  <th>Name (Farmer)</th>
-                  <th>Residence</th>
-                  <th>Debit Dt. (Due Date)</th>
-                  <th style={{ textAlign: "right" }}>Net Wt (qtl)</th>
-                  <th style={{ textAlign: "right" }}>Rate (₹)</th>
-                  <th style={{ textAlign: "right" }}>Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {debitBills.map((b, idx) => (
-                  <tr key={b.id || idx}>
-                    <td>{idx + 1}</td>
-                    <td><b>{b.bill_number}</b></td>
-                    <td><b>{b.seller_name}</b></td>
-                    <td>{b.village_name || b.seller_residence}</td>
-                    <td style={{ color: "#B91C1C", fontWeight: 700 }}>{b.due_date || "28-10-2026"}</td>
-                    <td style={{ textAlign: "right", fontWeight: 700 }}>{Number(b.net_weight || 0).toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>₹{Number(b.rate || 0).toFixed(2)}</td>
-                    <td style={{ textAlign: "right", fontWeight: 800, color: "#1D4ED8" }}>
-                      ₹{Number(b.net_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            {debitBills.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
+                <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>No debit credit vouchers recorded.</p>
+                <p style={{ fontSize: 11, color: "#94a3b8" }}>Debit/credit vouchers will appear here when you create bills with payment mode set to Debit.</p>
+              </div>
+            ) : (
+              <table className="modern-report-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 50 }}>SrNo</th>
+                    <th style={{ width: 90 }}>TNo.</th>
+                    <th>Name (Farmer)</th>
+                    <th>Residence</th>
+                    <th>Debit Dt. (Due Date)</th>
+                    <th style={{ textAlign: "right" }}>Net Wt (qtl)</th>
+                    <th style={{ textAlign: "right" }}>Rate (₹)</th>
+                    <th style={{ textAlign: "right" }}>Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debitBills.map((b, idx) => (
+                    <tr key={b.id || idx}>
+                      <td>{idx + 1}</td>
+                      <td><b>{b.bill_number}</b></td>
+                      <td><b>{b.seller_name}</b></td>
+                      <td>{b.village_name || b.seller_residence}</td>
+                      <td style={{ color: "#B91C1C", fontWeight: 700 }}>{b.due_date || "—"}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700 }}>{Number(b.net_weight || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}>₹{Number(b.rate || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 800, color: "#1D4ED8" }}>
+                        ₹{Number(b.net_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="modern-report-footer">
+                    <td colSpan={5}>TOTAL OUTSTANDING DEBIT:</td>
+                    <td style={{ textAlign: "right" }}>{debitTotals.weight.toFixed(2)} qtl</td>
+                    <td style={{ textAlign: "right" }}>₹{debitTotals.avg.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", color: "#1D4ED8", fontSize: 13 }}>
+                      ₹{debitTotals.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="modern-report-footer">
-                  <td colSpan={5}>TOTAL OUTSTANDING DEBIT:</td>
-                  <td style={{ textAlign: "right" }}>{debitTotals.weight.toFixed(2)} qtl</td>
-                  <td style={{ textAlign: "right" }}>₹{debitTotals.avg.toFixed(2)}</td>
-                  <td style={{ textAlign: "right", color: "#1D4ED8", fontSize: 13 }}>
-                    ₹{debitTotals.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            )}
           </div>
         </div>
       )}

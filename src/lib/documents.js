@@ -121,6 +121,17 @@ export function generateContractPdf(c, { returnBlob = false } = {}) {
       ["14. RATE PER CANDY", c.rate_per_candy ? `INR ${money(c.rate_per_candy)} / Candy` : "—"],
       ["15. DELIVERY ADDRESS", c.delivery_address]
     ];
+    const qtyVal = parseFloat(c.quantity) || 0;
+    const rateVal = parseFloat(c.rate_per_candy) || 0;
+    const gstRateVal = parseFloat(c.gst_rate) >= 0 ? parseFloat(c.gst_rate) : 5;
+    const subtotalVal = qtyVal * rateVal;
+    if (subtotalVal > 0) {
+      const gstVal = subtotalVal * (gstRateVal / 100);
+      const grandVal = subtotalVal + gstVal;
+      items.push(["GST RATE", `${gstRateVal}%`]);
+      items.push(["ESTIMATED BASE AMOUNT", `INR ${money(subtotalVal)}`]);
+      items.push(["TOTAL PAYMENT VALUE", `INR ${money(grandVal)} (incl. ${gstRateVal}% GST)`]);
+    }
     y = section(pdf, "NET COTTON CONTRACT DETAILS (STEP 1)", items, y);
   } else {
     // Module 1: Exact 13 fields from COTTON SEED PDF
@@ -139,6 +150,17 @@ export function generateContractPdf(c, { returnBlob = false } = {}) {
       ["12. PACKING TYPE", c.packing_type || "LOOSE/BAGS"],
       ["13. DELIVERY ADDRESS", c.delivery_address]
     ];
+    const qtyVal = parseFloat(c.quantity) || 0;
+    const rateVal = parseFloat(c.rate_per_quintal) || 0;
+    const gstRateVal = parseFloat(c.gst_rate) >= 0 ? parseFloat(c.gst_rate) : 5;
+    const subtotalVal = qtyVal * rateVal;
+    if (subtotalVal > 0) {
+      const gstVal = subtotalVal * (gstRateVal / 100);
+      const grandVal = subtotalVal + gstVal;
+      items.push(["GST RATE", `${gstRateVal}%`]);
+      items.push(["ESTIMATED BASE AMOUNT", `INR ${money(subtotalVal)}`]);
+      items.push(["TOTAL PAYMENT VALUE", `INR ${money(grandVal)} (incl. ${gstRateVal}% GST)`]);
+    }
     y = section(pdf, "COTTON SEED CONTRACT DETAILS (STEP 1)", items, y);
   }
 
@@ -275,3 +297,351 @@ export function generateGatePassPdf(c, l, number, { returnBlob = false } = {}) {
   if (returnBlob) return pdf.output("blob");
   pdf.save(`Gate-Pass-${number || "draft"}.pdf`);
 }
+
+// PDF EXPORT FOR COTTON DAILY PURCHASE (Page 1 & 3)
+export function generateDailyPurchaseReportPdf(date, records) {
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const w = pdf.internal.pageSize.getWidth();
+
+  // Header banner
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, w, 28, "F");
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(14);
+  pdf.text("SHREE JAGDAMBA COTTON GINNING & PRESSING FACTORY", 14, 11);
+  pdf.setFontSize(8.5);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("HANDOD (HANDOD-POICHA ROAD) — COTTON DAILY PURCHASE SHEET", 14, 18);
+  pdf.text(`Date: ${date || new Date().toLocaleDateString("en-IN")}`, w - 45, 18);
+
+  let y = 36;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.setFillColor(241, 245, 249);
+  pdf.rect(14, y, w - 28, 7, "F");
+  pdf.setTextColor(15, 23, 42);
+
+  pdf.text("Sr", 16, y + 5);
+  pdf.text("Farmer Name", 25, y + 5);
+  pdf.text("Village", 75, y + 5);
+  pdf.text("Type", 110, y + 5);
+  pdf.text("Weight (Qtl)", 125, y + 5);
+  pdf.text("Rate (₹)", 152, y + 5);
+  pdf.text("Amount (₹)", 175, y + 5);
+
+  y += 7;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+
+  let totalWeight = 0;
+  let totalAmount = 0;
+
+  records.forEach((r, idx) => {
+    if (y > 270) {
+      pdf.addPage();
+      y = 20;
+    }
+    const wt = Number(r.weight) || 0;
+    const rate = Number(r.rate) || 0;
+    const amt = Number(r.amount) || wt * rate;
+    totalWeight += wt;
+    totalAmount += amt;
+
+    if (idx % 2 === 1) {
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(14, y, w - 28, 6, "F");
+    }
+
+    pdf.setTextColor(51, 65, 85);
+    pdf.text(String(r.sr_no || idx + 1), 16, y + 4.5);
+    pdf.text(String(r.farmer_name || "").substring(0, 24), 25, y + 4.5);
+    pdf.text(String(r.village_name || "").substring(0, 18), 75, y + 4.5);
+    pdf.text(String(r.cotton_type || "S/6"), 110, y + 4.5);
+    pdf.text(wt.toFixed(2), 125, y + 4.5);
+    pdf.text(rate.toFixed(2), 152, y + 4.5);
+    pdf.text(amt.toLocaleString("en-IN", { maximumFractionDigits: 2 }), 175, y + 4.5);
+
+    y += 6;
+  });
+
+  // Summary row
+  y += 2;
+  pdf.setFillColor(226, 232, 240);
+  pdf.rect(14, y, w - 28, 8, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(15, 23, 42);
+  pdf.text("TOTALS / SUMMARY", 25, y + 5.5);
+  pdf.text(totalWeight.toFixed(2), 125, y + 5.5);
+  pdf.text(
+    totalWeight > 0 ? (totalAmount / totalWeight).toFixed(2) : "0.00",
+    152,
+    y + 5.5
+  );
+  pdf.text(
+    "₹" + totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+    175,
+    y + 5.5
+  );
+
+  pdf.save(`Cotton-Daily-Purchase-${date || "today"}.pdf`);
+}
+
+// PDF EXPORT FOR HEAP WISE AVERAGE DETAILS (Page 8 benchmark)
+export function generateHeapWiseReportPdf(fromDate, toDate, heapList) {
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const w = pdf.internal.pageSize.getWidth();
+
+  // Header banner
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, w, 28, "F");
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(14);
+  pdf.text("SHREE JAGDAMBA COTTON GINNING & PRESSING FACTORY", 14, 11);
+  pdf.setFontSize(8.5);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("HEAP WISE AVERAGE DETAILS (BENCHMARK PROCUREMENT AUDIT)", 14, 18);
+  pdf.text(`Period: ${fromDate || "—"} to ${toDate || "—"}`, w - 75, 18);
+
+  let y = 36;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.5);
+  pdf.setFillColor(241, 245, 249);
+  pdf.rect(14, y, w - 28, 7, "F");
+  pdf.setTextColor(15, 23, 42);
+
+  pdf.text("Heap No", 16, y + 5);
+  pdf.text("Heap Name", 35, y + 5);
+  pdf.text("Gross Wt (Qtl)", 75, y + 5);
+  pdf.text("Tare Wt (Qtl)", 105, y + 5);
+  pdf.text("Net Wt (Qtl)", 135, y + 5);
+  pdf.text("Amount (₹)", 155, y + 5);
+  pdf.text("Avg Rate (₹)", 182, y + 5);
+
+  y += 7;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+
+  let totalNetWt = 0;
+  let totalAmount = 0;
+
+  heapList.forEach((h, idx) => {
+    if (y > 270) {
+      pdf.addPage();
+      y = 20;
+    }
+    const net = Number(h.net_weight) || 0;
+    const amt = Number(h.amount) || 0;
+    const avg = Number(h.average_rate) || (net > 0 ? amt / net : 0);
+    totalNetWt += net;
+    totalAmount += amt;
+
+    if (idx % 2 === 1) {
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(14, y, w - 28, 6, "F");
+    }
+
+    pdf.setTextColor(51, 65, 85);
+    pdf.text(String(h.heap_number), 16, y + 4.5);
+    pdf.text(String(h.heap_name || "").substring(0, 18), 35, y + 4.5);
+    pdf.text(Number(h.gross_weight || 0).toFixed(2), 75, y + 4.5);
+    pdf.text(Number(h.tare_weight || 0).toFixed(2), 105, y + 4.5);
+    pdf.text(net.toFixed(2), 135, y + 4.5);
+    pdf.text(amt.toLocaleString("en-IN", { maximumFractionDigits: 2 }), 155, y + 4.5);
+    pdf.text(avg.toFixed(2), 182, y + 4.5);
+
+    y += 6;
+  });
+
+  // Benchmark Total row
+  y += 2;
+  pdf.setFillColor(226, 232, 240);
+  pdf.rect(14, y, w - 28, 8, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(15, 23, 42);
+  pdf.text("GRAND TOTAL", 35, y + 5.5);
+  pdf.text(totalNetWt.toFixed(2), 135, y + 5.5);
+  pdf.text(
+    "₹" + totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+    155,
+    y + 5.5
+  );
+  pdf.text(
+    totalNetWt > 0 ? (totalAmount / totalNetWt).toFixed(2) : "0.00",
+    182,
+    y + 5.5
+  );
+
+  pdf.save(`Heap-Wise-Average-Report.pdf`);
+}
+
+// PDF EXPORT FOR TRIPLICATE BILLING (Page 4 & 5: Cash / Debit Bill)
+export function generateTriplicateBillPdf(bill) {
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const w = pdf.internal.pageSize.getWidth();
+  const isDebit = (bill.bill_type || bill.payment_mode || "").toLowerCase() === "debit";
+
+  // Factory Header
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, w, 32, "F");
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(15);
+  pdf.text("SHREE JAGDAMBA COTTON GINNING & PRESSING FACTORY", 14, 13);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.5);
+  pdf.text("HANDOD (HANDOD-POICHA ROAD) TAL: SHINOR, DIST: VADODARA, GUJARAT", 14, 20);
+  pdf.setFontSize(8);
+  pdf.setTextColor(203, 213, 225);
+  pdf.text(`FARMER COTTON PURCHASE BILL (${isDebit ? "DEBIT PURCHASE" : "CASH PURCHASE"})`, 14, 27);
+  pdf.text(`BILL NO: ${bill.bill_number || bill.bill_no || "DRAFT"}`, w - 50, 27);
+
+  // Section: Bill meta
+  let y = 42;
+  pdf.setFillColor(241, 245, 249);
+  pdf.rect(14, y, w - 28, 24, "F");
+
+  pdf.setTextColor(15, 23, 42);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.text("1. Bill Date:", 18, y + 6);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(String(bill.bill_date || "—"), 45, y + 6);
+
+  pdf.setFont("helvetica", "bold");
+  pdf.text("2. Farmer Name:", 80, y + 6);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(String(bill.seller_name || bill.farmer_name || "—"), 112, y + 6);
+
+  pdf.setFont("helvetica", "bold");
+  pdf.text("3. Village Name:", 18, y + 13);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(String(bill.seller_residence || bill.village_name || "—"), 45, y + 13);
+
+  pdf.setFont("helvetica", "bold");
+  pdf.text("4. Vehicle No:", 80, y + 13);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(String(bill.vehicle_number || bill.vehicle_no || "—"), 112, y + 13);
+
+  pdf.setFont("helvetica", "bold");
+  pdf.text("5. Contact No:", 18, y + 20);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(String(bill.contact_number || bill.contact_no || "—"), 45, y + 20);
+
+  pdf.setFont("helvetica", "bold");
+  pdf.text("6. Heap No:", 80, y + 20);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(String(bill.heap_number || bill.heap_no || "—"), 112, y + 20);
+
+  // Section: Weight & Rate Calculations
+  y += 32;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.text("WEIGHT & AMOUNT CALCULATION", 14, y);
+  y += 4;
+
+  const gross = Number(bill.gross_weight) || 0;
+  const tare = Number(bill.tare_weight) || 0;
+  const net = Number(bill.net_weight) || Math.max(0, gross - tare);
+  const rate = Number(bill.rate) || 0;
+  const amt = Number(bill.gross_amount) || Number(bill.amount) || (net * rate);
+  const labor = Number(bill.labor_charges) || 0;
+  const vatav = Number(bill.vatav) || 0;
+  const netPay = Number(bill.net_amount) || Math.max(0, amt - labor - vatav);
+
+  const calcRows = [
+    ["7. Cotton Type", String(bill.cotton_type || bill.commodity || "Kapash")],
+    ["8. Gross Weight", `${gross.toFixed(2)} Quintals`],
+    ["9. Tare Weight", `${tare.toFixed(2)} Quintals`],
+    ["10. Net Weight (Gross - Tare)", `${net.toFixed(2)} Quintals`],
+    ["11. Rate per Quintal", `Rs. ${rate.toFixed(2)}`],
+    ["12. Total Amount (Net Wt x Rate)", `Rs. ${amt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`],
+    ["13. Labor / Deductions", `Rs. ${labor.toFixed(2)}`],
+    ["14. Net Payable to Farmer", `Rs. ${netPay.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`]
+  ];
+
+  calcRows.forEach(([lbl, val], idx) => {
+    pdf.setFillColor(idx % 2 === 0 ? 255 : 248, 250, 252);
+    pdf.rect(14, y, w - 28, 7, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text(lbl, 18, y + 5);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(val, w - 20, y + 5, { align: "right" });
+    y += 7;
+  });
+
+  // Section: Settlement Details
+  y += 6;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.text(isDebit ? "DEBIT SETTLEMENT DETAILS" : "CASH DENOMINATIONS BREAKDOWN", 14, y);
+  y += 4;
+
+  if (isDebit) {
+    pdf.setFillColor(241, 245, 249);
+    pdf.rect(14, y, w - 28, 22, "F");
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8.5);
+    pdf.text(`15. Due Date: ${bill.due_date || bill.debit_due_date || "—"} (${bill.total_credit_days || bill.debit_days || "0"} Days)`, 18, y + 7);
+    pdf.text(`16. Cheque / NEFT Ref: ${bill.cheque_number || bill.cheque_no || bill.neft_reference || bill.neft_ref || "—"}`, 18, y + 14);
+    y += 28;
+  } else {
+    // Currency notes drawer table
+    const denoms = bill.currency_drawer || bill.denominations || { "500": 0, "200": 0, "100": 0, "50": 0, "20": 0, "10": 0, "5": 0 };
+    pdf.setFillColor(241, 245, 249);
+    pdf.rect(14, y, w - 28, 6, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.text("Note (Rs.)", 20, y + 4.5);
+    pdf.text("Count", 60, y + 4.5);
+    pdf.text("Total (Rs.)", 100, y + 4.5);
+    y += 6;
+
+    let drawerTotal = 0;
+    const noteKeys = [500, 200, 100, 50, 20, 10, 5];
+    noteKeys.forEach((note) => {
+      const count = Number(denoms[note] || denoms[String(note)]) || 0;
+      const sub = count * Number(note);
+      drawerTotal += sub;
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Rs. ${note}`, 20, y + 4.5);
+      pdf.text(String(count), 60, y + 4.5);
+      pdf.text(`Rs. ${sub.toLocaleString("en-IN")}`, 100, y + 4.5);
+      y += 5.5;
+    });
+
+    pdf.setFillColor(226, 232, 240);
+    pdf.rect(14, y, w - 28, 6, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Cash Paid Total", 20, y + 4.5);
+    pdf.text(`Rs. ${drawerTotal.toLocaleString("en-IN")}`, 100, y + 4.5);
+    y += 12;
+  }
+
+  // Triplicate Stamp Footnote
+  y = Math.max(y + 10, 240);
+  pdf.setDrawColor(148, 163, 184);
+  pdf.line(18, y, 70, y);
+  pdf.line(w - 70, y, w - 18, y);
+
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(51, 65, 85);
+  pdf.text("Farmer Signature / Thumb Impression", 18, y + 6);
+  pdf.text("Authorized Factory Sign & Stamp", w - 70, y + 6);
+
+  pdf.setFont("helvetica", "italic");
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text("Triplicate Copies: Copy 1: Farmer Copy | Copy 2: Accounts Dept | Copy 3: Factory Gate / Audit", 14, 285);
+
+  pdf.save(`Triplicate-Bill-${bill.bill_no || "draft"}.pdf`);
+}
+

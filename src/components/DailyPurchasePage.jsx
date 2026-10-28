@@ -1,14 +1,42 @@
-import React, { useState, useMemo } from "react";
-import { Plus, Trash2, Save, Printer, Check, Search, Calendar, FileText, Layers, ShieldCheck } from "lucide-react";
+import React, { useState, useMemo, useRef } from "react";
+import { Plus, Trash2, Save, Printer, Check, Search, Calendar, FileText, Layers, ShieldCheck, Sparkles, CornerDownLeft } from "lucide-react";
 import { getLocalDailyPurchases, saveLocalDailyPurchases, getLocalFarmers } from "../lib/farmerStore";
 import { generateDailyPurchaseReportPdf } from "../lib/documents";
 
 export default function DailyPurchasePage() {
-  const [purchaseDate, setPurchaseDate] = useState("13-10-2026");
-  const [records, setRecords] = useState(() => getLocalDailyPurchases());
+  const [purchaseDate, setPurchaseDate] = useState(() => new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-"));
+  
+  // Clean initialization: starts with 1 blank entry row if empty
+  const [records, setRecords] = useState(() => {
+    const saved = getLocalDailyPurchases();
+    if (saved && saved.length > 0) return saved;
+    return [{
+      id: "dp-" + Date.now(),
+      sr_no: 1,
+      farmer_name: "",
+      village_name: "",
+      cotton_type: "S/6",
+      weight: "",
+      rate: "",
+      amount: 0
+    }];
+  });
+
   const [farmers] = useState(() => getLocalFarmers());
   const [savedMsg, setSavedMsg] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
+
+  // Refs matrix for rapid keyboard navigation: inputRefs.current[`${rowIdx}_${colName}`]
+  const inputRefs = useRef({});
+
+  const focusField = (rowIdx, colName) => {
+    const key = `${rowIdx}_${colName}`;
+    const el = inputRefs.current[key];
+    if (el) {
+      el.focus();
+      if (typeof el.select === "function") el.select();
+    }
+  };
 
   // Live Auto-Refreshing Totals (Document Requirement: "In this I want total weight and total amount will get refreshing")
   const totals = useMemo(() => {
@@ -35,7 +63,7 @@ export default function DailyPurchasePage() {
 
       // Autocomplete village if farmer name matches
       if (field === "farmer_name") {
-        const found = farmers.find(f => f.farmer_name.toLowerCase() === value.toLowerCase());
+        const found = farmers.find(f => f.farmer_name.toLowerCase() === (value || "").toLowerCase());
         if (found) item.village_name = found.village;
       }
 
@@ -43,7 +71,7 @@ export default function DailyPurchasePage() {
       if (field === "weight" || field === "rate") {
         const wt = Number(field === "weight" ? value : item.weight || 0);
         const rt = Number(field === "rate" ? value : item.rate || 0);
-        item.amount = Number((wt * rt).toFixed(2));
+        item.amount = wt && rt ? Number((wt * rt).toFixed(2)) : 0;
       }
 
       next[index] = item;
@@ -51,24 +79,116 @@ export default function DailyPurchasePage() {
     });
   };
 
-  const addRow = () => {
+  const addRow = (defaultRate = "", defaultVillage = "") => {
+    const newId = "dp-" + Date.now() + Math.random().toString(36).substring(2, 5);
     setRecords(old => [
       ...old,
       {
-        id: "dp-" + Date.now(),
+        id: newId,
         sr_no: old.length + 1,
+        farmer_name: "",
+        village_name: defaultVillage,
+        cotton_type: "S/6",
+        weight: "",
+        rate: defaultRate,
+        amount: 0
+      }
+    ]);
+    return newId;
+  };
+
+  // EXCEL-STYLE ENTER KEY PROGRESSION:
+  // Pressing Enter moves across cells: Farmer -> Village -> Weight -> Rate.
+  // When at the last row, pressing Enter on Rate (or pressing Enter in any cell to advance to next row) creates a new empty row and focuses it!
+  const handleKeyDown = (e, rowIdx, colName) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      if (colName === "farmer_name") {
+        focusField(rowIdx, "village_name");
+      } else if (colName === "village_name") {
+        focusField(rowIdx, "weight");
+      } else if (colName === "cotton_type") {
+        focusField(rowIdx, "weight");
+      } else if (colName === "weight") {
+        focusField(rowIdx, "rate");
+      } else if (colName === "rate") {
+        // If at the last row, automatically append a new row and focus farmer_name
+        if (rowIdx >= records.length - 1) {
+          const currentRate = records[rowIdx]?.rate || "";
+          addRow(currentRate, "");
+          setTimeout(() => {
+            focusField(rowIdx + 1, "farmer_name");
+          }, 35);
+        } else {
+          // Move down to next row's farmer_name
+          focusField(rowIdx + 1, "farmer_name");
+        }
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (rowIdx < records.length - 1) {
+        focusField(rowIdx + 1, colName);
+      } else {
+        // Excel behavior: pressing Arrow Down at the bottom-most row automatically adds a new blank row!
+        const currentRate = records[rowIdx]?.rate || "";
+        addRow(currentRate, "");
+        setTimeout(() => focusField(rowIdx + 1, colName), 35);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (rowIdx > 0) {
+        focusField(rowIdx - 1, colName);
+      }
+    } else if (e.key === "ArrowRight") {
+      // Excel-style horizontal arrow
+      if (colName === "farmer_name") focusField(rowIdx, "village_name");
+      else if (colName === "village_name") focusField(rowIdx, "weight");
+      else if (colName === "weight") focusField(rowIdx, "rate");
+    } else if (e.key === "ArrowLeft") {
+      if (colName === "rate") focusField(rowIdx, "weight");
+      else if (colName === "weight") focusField(rowIdx, "village_name");
+      else if (colName === "village_name") focusField(rowIdx, "farmer_name");
+    }
+  };
+
+  const removeRow = (index) => {
+    setRecords(old => {
+      const remaining = old.filter((_, i) => i !== index);
+      if (remaining.length === 0) {
+        return [{
+          id: "dp-" + Date.now(),
+          sr_no: 1,
+          farmer_name: "",
+          village_name: "",
+          cotton_type: "S/6",
+          weight: "",
+          rate: "",
+          amount: 0
+        }];
+      }
+      return remaining.map((r, i) => ({ ...r, sr_no: i + 1 }));
+    });
+  };
+
+  const clearAllData = () => {
+    if (window.confirm("Clear all rows and start a fresh empty ledger?")) {
+      const fresh = [{
+        id: "dp-" + Date.now(),
+        sr_no: 1,
         farmer_name: "",
         village_name: "",
         cotton_type: "S/6",
         weight: "",
-        rate: 74.00,
+        rate: "",
         amount: 0
-      }
-    ]);
-  };
-
-  const removeRow = (index) => {
-    setRecords(old => old.filter((_, i) => i !== index));
+      }];
+      setRecords(fresh);
+      saveLocalDailyPurchases(fresh);
+      setSavedMsg("Ledger cleared! Ready for fresh data entry.");
+      setTimeout(() => setSavedMsg(""), 3000);
+      setTimeout(() => focusField(0, "farmer_name"), 50);
+    }
   };
 
   const saveDailyLog = () => {
@@ -96,9 +216,9 @@ export default function DailyPurchasePage() {
       {/* Page Heading */}
       <div className="page-heading">
         <div>
-          <div className="eyebrow">FARMER PROCUREMENT ("DIFFER SECTION")</div>
+          <div className="eyebrow">FARMER PROCUREMENT SECTION</div>
           <h1>Cotton Daily Purchase Entry</h1>
-          <p>Rapid yard procurement ledger. Formula: Weight × Rate = Amount with real-time auto-refreshing totals.</p>
+          <p>Rapid yard procurement ledger with real-time auto-refreshing weight and amount totals.</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="button secondary" onClick={downloadPdf}>
@@ -178,9 +298,41 @@ export default function DailyPurchasePage() {
               />
             </div>
 
-            <button className="button primary" onClick={addRow} style={{ padding: "7px 14px", fontSize: 11 }}>
+            <button
+              className="button secondary"
+              onClick={clearAllData}
+              title="Clear all rows and reset to a clean blank ledger"
+              style={{ padding: "7px 12px", fontSize: 11, borderColor: "#cbd5e1" }}
+            >
+              <Trash2 size={13} style={{ color: "#ef4444" }} /> Clear Ledger
+            </button>
+
+            <button className="button primary" onClick={() => addRow()} style={{ padding: "7px 14px", fontSize: 11 }}>
               <Plus size={14} /> Add Farmer Row
             </button>
+          </div>
+        </div>
+
+        {/* Keyboard Quick Navigation Banner */}
+        <div style={{
+          background: "#f0fdf4",
+          borderBottom: "1px solid #bbf7d0",
+          padding: "7px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: 11,
+          color: "#166534"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <CornerDownLeft size={14} color="#15803d" />
+            <span>
+              <strong>Rapid Keyboard Mode:</strong> Press <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> to move to next cell. Pressing <kbd style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>Enter</kbd> on <b>Rate</b> will automatically create and jump to the next farmer row!
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#15803d", fontWeight: 600 }}>
+            <Sparkles size={13} />
+            <span>Hands-free weighbridge entry</span>
           </div>
         </div>
 
@@ -207,9 +359,11 @@ export default function DailyPurchasePage() {
                   </td>
                   <td>
                     <input
+                      ref={el => (inputRefs.current[`${idx}_farmer_name`] = el)}
                       type="text"
                       value={row.farmer_name}
                       onChange={e => updateRow(idx, "farmer_name", e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, idx, "farmer_name")}
                       placeholder="e.g. Anilbhai"
                       list="farmer-suggestions"
                       style={{
@@ -225,9 +379,11 @@ export default function DailyPurchasePage() {
                   </td>
                   <td>
                     <input
+                      ref={el => (inputRefs.current[`${idx}_village_name`] = el)}
                       type="text"
                       value={row.village_name || row.residence || ""}
                       onChange={e => updateRow(idx, "village_name", e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, idx, "village_name")}
                       placeholder="e.g. Fetapura"
                       style={{
                         width: "100%",
@@ -241,8 +397,10 @@ export default function DailyPurchasePage() {
                   </td>
                   <td style={{ textAlign: "center" }}>
                     <select
+                      ref={el => (inputRefs.current[`${idx}_cotton_type`] = el)}
                       value={row.cotton_type || "S/6"}
                       onChange={e => updateRow(idx, "cotton_type", e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, idx, "cotton_type")}
                       style={{
                         height: 32,
                         padding: "0 6px",
@@ -261,11 +419,13 @@ export default function DailyPurchasePage() {
                   </td>
                   <td>
                     <input
+                      ref={el => (inputRefs.current[`${idx}_weight`] = el)}
                       type="number"
                       step="0.01"
                       min="0"
                       value={row.weight}
                       onChange={e => updateRow(idx, "weight", e.target.value)}
+                      onKeyDown={e => handleKeyDown(e, idx, "weight")}
                       placeholder="0.00"
                       style={{
                         width: "100%",
@@ -281,12 +441,14 @@ export default function DailyPurchasePage() {
                   </td>
                   <td>
                     <input
+                      ref={el => (inputRefs.current[`${idx}_rate`] = el)}
                       type="number"
                       step="0.01"
                       min="0"
                       value={row.rate}
                       onChange={e => updateRow(idx, "rate", e.target.value)}
-                      placeholder="74.00"
+                      onKeyDown={e => handleKeyDown(e, idx, "rate")}
+                      placeholder="e.g. 74.00"
                       style={{
                         width: "100%",
                         height: 32,

@@ -1,150 +1,668 @@
-/* Responsive & Cross-Device Enhancements */
-html, body {
+/* ==========================================================================
+   Comprehensive Cross-Device Responsive System
+   Supports: iPhone (iOS Safari), Android, iPad/Tablets, Laptops, Desktops, 4K
+   ========================================================================== */
+
+/* 1. Base Reset & Touch Smoothness */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
   overflow-x: hidden;
   max-width: 100vw;
-  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
-* {
-  box-sizing: border-box;
+/* Ensure all buttons, links & inputs have comfortable touch targets */
+button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
+  touch-action: manipulation;
 }
 
+/* 2. Global Panel & Card Spacing Consistency */
 .panel {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
+  margin-bottom: 22px;
 }
 
-.gate-pass-button {
-  width: calc(100% - 42px) !important;
-  margin: 0 21px 18px !important;
-  box-sizing: border-box !important;
+.panel-heading {
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
 }
 
-.loading-form {
-  padding: 0 21px 18px !important;
-  box-sizing: border-box !important;
-}
-
-.detail-grid {
+/* Dashboard 2-column grid on desktop */
+.dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 22px;
   align-items: start;
 }
 
-/* Custom Shree Jagdamba Logo Styling */
-.app-logo-badge {
-  background: #ffffff;
-  padding: 4px 6px;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+/* Helper Panel terms list padding */
+.helper-panel {
+  padding: 0;
 }
 
-.app-logo-img {
-  width: 48px;
-  height: auto;
-  object-fit: contain;
-  display: block;
+.helper-panel ol {
+  padding: 18px 22px 18px 38px !important;
+  margin: 0 !important;
 }
 
-.login-copy .app-logo-badge {
-  width: fit-content;
-  padding: 8px 12px;
-  border-radius: 14px;
-  margin-bottom: 24px;
-}
-.login-copy .app-logo-img {
-  width: 90px;
+.helper-panel div:last-child {
+  padding: 14px 22px !important;
 }
 
-/* Tablet (iPad, Android Tablets) */
-@media (max-width: 950px) {
-  .detail-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .gate-pass-button {
-    width: calc(100% - 30px) !important;
-    margin: 0 15px 15px !important;
-  }
-  .loading-form {
-    padding: 0 15px 15px !important;
-  }
+/* Smooth Table Responsiveness with Scroll Hint */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
-/* Mobile & Small Screens (iOS Safari, Android Chrome) */
-@media (max-width: 650px) {
-  .field-grid, .loading-form, .detail-fields {
-    grid-template-columns: 1fr !important;
-  }
-  .stat-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .page-content {
-    padding: 16px 12px !important;
-  }
-  .topbar {
-    padding: 0 14px !important;
-  }
-  .form-panel {
-    padding: 15px !important;
-  }
-  .panel-heading {
-    padding: 15px !important;
-  }
-  .tracking-grid {
-    grid-template-columns: 1fr !important;
-    padding: 0 14px 14px !important;
-  }
-  .document-list {
-    padding: 0 14px !important;
-  }
-  .gate-pass-button {
-    width: calc(100% - 24px) !important;
-    margin: 0 12px 14px !important;
-  }
-  .loading-form {
-    padding: 0 12px 14px !important;
-  }
-  .form-actions {
-    flex-direction: column !important;
-  }
-  .form-actions .button {
-    width: 100% !important;
-  }
-  .table-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .table-toolbar .search-field {
-    width: 100%;
-  }
-  .table-toolbar .filter-select {
-    width: 100%;
-  }
+.data-table th, .data-table td {
+  white-space: nowrap;
 }
 
-/* Uniform Status Badge Sizes */
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  white-space: normal;
+  min-width: 160px;
+}
+
+/* Uniform Status Badge */
 .status-badge {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  min-width: 96px !important;
+  min-width: 92px !important;
   height: 26px !important;
   padding: 0 12px !important;
-  border-radius: 20px !important;
+  border-radius: 9999px !important;
   font-size: 11px !important;
-  font-weight: 600 !important;
-  box-sizing: border-box !important;
-  text-align: center !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
   gap: 6px !important;
 }
 
-.status-badge i {
-  width: 6px !important;
-  height: 6px !important;
-  border-radius: 50% !important;
-  flex-shrink: 0 !important;
+/* Stepper Bar Responsiveness */
+.contract-stepper {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: 22px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stepper-tab {
+  flex: 1;
+  min-width: 170px;
+}
+
+/* Form Layout */
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.form-panel {
+  padding: 26px 28px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* Detail Fields Grid */
+.detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+
+.detail-item {
+  background: #ffffff;
+  padding: 12px 16px;
+}
+
+.detail-item .detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.detail-item .detail-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--navy-950);
+  word-break: break-word;
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Large Laptops & Desktops (max-width: 1200px)
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-layout {
+    grid-template-columns: 1fr;
+  }
+  .form-aside {
+    order: -1;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Tablets & iPad (max-width: 960px)
+   ========================================================================== */
+@media (max-width: 960px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .main-area {
+    margin-left: 0 !important;
+  }
+
+  .menu-toggle {
+    display: inline-flex !important;
+  }
+
+  .sidebar-close {
+    display: inline-flex !important;
+  }
+
+  .topbar {
+    padding: 0 20px;
+    height: 64px;
+  }
+
+  .page-content {
+    padding: 24px 20px 40px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .workflow-stepper-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 20px;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Phablets & Mobile Phones (max-width: 640px)
+   ========================================================================== */
+@media (max-width: 640px) {
+  .topbar {
+    padding: 0 14px;
+    height: 58px;
+  }
+
+  .breadcrumbs {
+    font-size: 11.5px;
+  }
+
+  .today-pill {
+    display: none;
+  }
+
+  .page-content {
+    padding: 16px 14px 36px !important;
+  }
+
+  .page-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .page-heading h1 {
+    font-size: 22px !important;
+    letter-spacing: -0.4px;
+  }
+
+  .page-heading .button {
+    width: 100%;
+  }
+
+  /* Single Column Stacking for Small Devices */
+  .stat-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    margin-top: 8px;
+  }
+
+  .workflow-stepper-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .workflow-step-card {
+    padding: 16px;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .detail-fields {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-panel {
+    padding: 18px 16px !important;
+  }
+
+  .panel-heading {
+    padding: 14px 16px !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .panel-heading .button,
+  .panel-heading .text-button {
+    align-self: flex-start;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .search-box {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .filter-pills {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px;
+  }
+
+  .filter-pill {
+    padding: 6px 14px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .step-nav-footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 10px;
+  }
+
+  .step-nav-footer .button {
+    width: 100%;
+  }
+
+  .contract-stepper {
+    flex-wrap: nowrap;
+    border-radius: var(--radius-md);
+  }
+
+  .stepper-tab {
+    padding: 12px 14px;
+    min-width: 140px;
+  }
+
+  .stepper-label span {
+    display: none;
+  }
+
+  .footer {
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 16px;
+    text-align: center;
+  }
+}
+
+/* ==========================================================================
+   BREAKPOINTS: Extra Small Devices (iPhone SE / max-width: 380px)
+   ========================================================================== */
+@media (max-width: 380px) {
+  .page-heading h1 {
+    font-size: 20px !important;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .button {
+    padding: 9px 14px;
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
+   MOBILE & CROSS-DEVICE ENHANCEMENTS (iOS, Android, PWA & Responsive Web)
+   ========================================================================== */
+
+/* iOS Safe Areas & Notch handling */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .topbar {
+    padding-top: env(safe-area-inset-top);
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    height: calc(64px + env(safe-area-inset-top));
+  }
+  .sidebar {
+    padding-top: calc(20px + env(safe-area-inset-top));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .page-content {
+    padding-bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Touch targets & form input auto-zoom prevention on iOS (< 16px causes iOS Safari auto-zoom) */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents unwanted iOS zoom on focus */
+  }
+
+  /* Make header and buttons wrap gracefully */
+  .page-heading {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .page-heading > div:last-child {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .page-heading > div:last-child .button {
+    flex: 1 1 140px !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  /* Topbar Responsive */
+  .topbar-actions {
+    overflow-x: auto;
+    max-width: 60%;
+  }
+
+  /* Factory Brand Strip on Mobile */
+  .factory-brand-strip {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 14px 16px !important;
+  }
+
+  .factory-brand-strip .brand-left {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .factory-brand-strip .brand-meta {
+    width: 100% !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Container Header Bar on Mobile */
+  .container-header-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+  }
+
+  .container-header-bar > div:last-child {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .container-header-bar input,
+  .container-header-bar select {
+    width: 100% !important;
+    height: 38px !important;
+  }
+
+  /* Party Entities Grid: Single column on small devices */
+  .party-entities-grid {
+    grid-template-columns: 1fr !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+
+  .entity-box {
+    padding: 12px !important;
+  }
+
+  /* Consignment Metadata Bar */
+  .consignment-meta-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    padding: 12px 14px !important;
+    gap: 8px !important;
+  }
+
+  /* Weighment Cards Grid */
+  .weighment-strip-container {
+    padding: 12px 14px !important;
+  }
+
+  .weighment-grid-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .weigh-card {
+    padding: 8px 10px !important;
+  }
+
+  .weigh-card-label {
+    font-size: 10px !important;
+  }
+
+  .weigh-card input {
+    height: 38px !important;
+    font-size: 15px !important;
+  }
+
+  .weigh-card-value {
+    font-size: 15px !important;
+    padding: 4px 0 !important;
+  }
+
+  /* Case Type Split Container (Payment & Remarks) */
+  .casetype-split-container {
+    grid-template-columns: 1fr !important;
+    padding: 12px 14px !important;
+    gap: 12px !important;
+  }
+
+  .casetype-card {
+    padding: 12px !important;
+  }
+
+  .casetype-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .casetype-toggle-group {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .casetype-toggle-btn {
+    flex: 1 !important;
+    text-align: center !important;
+    padding: 8px 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Denomination Currency Drawer */
+  .modern-currency-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .currency-slot {
+    padding: 6px 4px !important;
+  }
+
+  .currency-slot input {
+    height: 34px !important;
+    font-size: 14px !important;
+  }
+
+  .currency-balance-pill {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    padding: 8px 10px !important;
+  }
+
+  /* 4 Signatures Grid */
+  .signatures-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+  }
+
+  .sign-box {
+    padding: 8px 6px !important;
+  }
+
+  .sign-line {
+    height: 18px !important;
+  }
+
+  /* Responsive Subtabs */
+  .report-subtabs-nav {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .report-subtab {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 10px 14px !important;
+  }
+
+  /* Stepper Bar on Mobile */
+  .contract-stepper {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    scrollbar-width: none !important;
+  }
+
+  .contract-stepper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stepper-tab {
+    flex: 0 0 auto !important;
+    min-width: 140px !important;
+  }
+
+  /* Smooth horizontal scroll for table with mobile indicators */
+  .table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    position: relative;
+    border-radius: 8px;
+  }
+
+  .modern-report-table {
+    min-width: 680px;
+  }
+
+  /* Step Navigation & Action Buttons */
+  .step-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .step-actions .button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .consignment-meta-bar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .weighment-grid-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modern-currency-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .signatures-container {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
