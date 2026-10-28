@@ -402,8 +402,9 @@ export default function TriplicateBillingPage() {
       )}
 
       {/* Stepper Navigation */}
-      <div className="contract-stepper">
+      <div className="contract-stepper triplicate-stepper">
         <button
+          type="button"
           className={`stepper-tab ${activeStep === 1 ? "active" : ""} ${activeStep > 1 ? "done" : ""}`}
           onClick={() => setActiveStep(1)}
         >
@@ -415,17 +416,19 @@ export default function TriplicateBillingPage() {
         </button>
 
         <button
+          type="button"
           className={`stepper-tab ${activeStep === 2 ? "active" : ""}`}
           onClick={() => setActiveStep(2)}
         >
           <div className="stepper-num">2</div>
           <div className="stepper-label">
             <strong>Step 2: Triplicate Voucher</strong>
-            <span>Weighment, Rate & Currency Drawer</span>
+            <span>Weighment, Rate & Currency</span>
           </div>
         </button>
 
         <button
+          type="button"
           className={`stepper-tab ${activeStep === 3 ? "active" : ""}`}
           onClick={() => setActiveStep(3)}
         >
@@ -439,7 +442,7 @@ export default function TriplicateBillingPage() {
 
       {/* STEP 1: MASTER REGISTRATION */}
       {activeStep === 1 && (
-        <div className="form-layout">
+        <div className="form-layout farmer-master-layout">
           <div className="form-main">
             <div className="panel form-panel">
               <div className="form-section-heading">
@@ -656,65 +659,13 @@ export default function TriplicateBillingPage() {
             </div>
           </div>
 
-          {/* CONTAINER 2: 3-Party Entity Blocks (Dalal, Buyer, Seller) */}
+          {/* CONTAINER 2: 3-Party Entity Blocks (Seller First for rapid mobile input, then Dalal & Buyer) */}
           <div className="party-entities-grid">
-            {/* Dalal Box */}
-            <div className="entity-box">
+            {/* 1. Seller (Farmer) Box - Primary User Input */}
+            <div className="entity-box seller-box" style={{ borderLeft: "3px solid #3b82f6" }}>
               <div className="entity-box-title">
-                <span>1. Dalal (Broker) Details</span>
-                <span style={{ color: "#94a3b8" }}>Factory Desk</span>
-              </div>
-              <div className="entity-fields">
-                <div className="entity-field">
-                  <label>Dalal Name</label>
-                  <input
-                    type="text"
-                    value={billForm.dalal_name}
-                    onChange={e => setBillForm({ ...billForm, dalal_name: e.target.value })}
-                  />
-                </div>
-                <div className="entity-field">
-                  <label>Residence (Location)</label>
-                  <input
-                    type="text"
-                    value={billForm.dalal_residence}
-                    onChange={e => setBillForm({ ...billForm, dalal_residence: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Buyer Box */}
-            <div className="entity-box">
-              <div className="entity-box-title">
-                <span>2. Buyer (Factory) Details</span>
-                <span style={{ color: "#10b981" }}>Purchaser</span>
-              </div>
-              <div className="entity-fields">
-                <div className="entity-field">
-                  <label>Buyer Name</label>
-                  <input
-                    type="text"
-                    value={billForm.buyer_name}
-                    onChange={e => setBillForm({ ...billForm, buyer_name: e.target.value })}
-                  />
-                </div>
-                <div className="entity-field">
-                  <label>Residence (Location)</label>
-                  <input
-                    type="text"
-                    value={billForm.buyer_residence}
-                    onChange={e => setBillForm({ ...billForm, buyer_residence: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Seller (Farmer) Box */}
-            <div className="entity-box" style={{ borderLeft: "3px solid #3b82f6" }}>
-              <div className="entity-box-title">
-                <span>3. Seller (Farmer) Details</span>
-                <span style={{ color: "#3b82f6" }}>Supplier</span>
+                <span>1. Seller (Farmer) Details</span>
+                <span style={{ color: "#3b82f6", fontWeight: 700 }}>Primary Supplier</span>
               </div>
               <div className="entity-fields">
                 <div className="entity-field">
@@ -758,6 +709,58 @@ export default function TriplicateBillingPage() {
                 </div>
               </div>
             </div>
+
+            {/* 2. Dalal Box - Factory Desk */}
+            <div className="entity-box dalal-box">
+              <div className="entity-box-title">
+                <span>2. Dalal (Broker) Details</span>
+                <span style={{ color: "#94a3b8" }}>Factory Desk</span>
+              </div>
+              <div className="entity-fields">
+                <div className="entity-field">
+                  <label>Dalal Name</label>
+                  <input
+                    type="text"
+                    value={billForm.dalal_name}
+                    onChange={e => setBillForm({ ...billForm, dalal_name: e.target.value })}
+                  />
+                </div>
+                <div className="entity-field">
+                  <label>Residence (Location)</label>
+                  <input
+                    type="text"
+                    value={billForm.dalal_residence}
+                    onChange={e => setBillForm({ ...billForm, dalal_residence: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Buyer Box - Factory Purchaser */}
+            <div className="entity-box buyer-box">
+              <div className="entity-box-title">
+                <span>3. Buyer (Factory) Details</span>
+                <span style={{ color: "#10b981" }}>Purchaser</span>
+              </div>
+              <div className="entity-fields">
+                <div className="entity-field">
+                  <label>Buyer Name</label>
+                  <input
+                    type="text"
+                    value={billForm.buyer_name}
+                    onChange={e => setBillForm({ ...billForm, buyer_name: e.target.value })}
+                  />
+                </div>
+                <div className="entity-field">
+                  <label>Residence (Location)</label>
+                  <input
+                    type="text"
+                    value={billForm.buyer_residence}
+                    onChange={e => setBillForm({ ...billForm, buyer_residence: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* CONTAINER 3: Consignment & Yard Metadata Strip */}
@@ -793,6 +796,7 @@ export default function TriplicateBillingPage() {
               <input
                 ref={el => (step2Refs.current["heap_number"] = el)}
                 type="text"
+                inputMode="numeric"
                 placeholder="e.g. 6"
                 value={billForm.heap_number}
                 onChange={e => setBillForm({ ...billForm, heap_number: e.target.value })}
@@ -805,6 +809,7 @@ export default function TriplicateBillingPage() {
               <label>Gate Pass No.</label>
               <input
                 type="text"
+                inputMode="numeric"
                 value={billForm.gate_pass_number}
                 onChange={e => setBillForm({ ...billForm, gate_pass_number: e.target.value })}
                 style={{ textAlign: "center", fontWeight: 700 }}
@@ -816,6 +821,7 @@ export default function TriplicateBillingPage() {
               <input
                 ref={el => (step2Refs.current["vehicle_number"] = el)}
                 type="text"
+                autoCapitalize="characters"
                 placeholder="e.g. GJ 06 AA 1101"
                 value={billForm.vehicle_number}
                 onChange={e => setBillForm({ ...billForm, vehicle_number: e.target.value })}
@@ -852,6 +858,7 @@ export default function TriplicateBillingPage() {
                   ref={el => (step2Refs.current["gross_weight"] = el)}
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   min="0"
                   value={billForm.gross_weight}
                   onChange={e => setBillForm({ ...billForm, gross_weight: e.target.value })}
@@ -867,6 +874,7 @@ export default function TriplicateBillingPage() {
                   ref={el => (step2Refs.current["tare_weight"] = el)}
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   min="0"
                   value={billForm.tare_weight}
                   onChange={e => setBillForm({ ...billForm, tare_weight: e.target.value })}
@@ -891,6 +899,7 @@ export default function TriplicateBillingPage() {
                   ref={el => (step2Refs.current["rate"] = el)}
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   min="0"
                   value={billForm.rate}
                   onChange={e => setBillForm({ ...billForm, rate: e.target.value })}
@@ -974,6 +983,7 @@ export default function TriplicateBillingPage() {
                           <input
                             type="number"
                             min="0"
+                            inputMode="numeric"
                             placeholder="0"
                             value={count === 0 ? "" : count}
                             onChange={e => handleNoteCountChange(note, e.target.value)}
@@ -1062,6 +1072,7 @@ export default function TriplicateBillingPage() {
                     ref={el => (step2Refs.current["labor_charges"] = el)}
                     type="number"
                     step="0.01"
+                    inputMode="decimal"
                     min="0"
                     placeholder="0"
                     value={billForm.labor_charges}
@@ -1076,6 +1087,7 @@ export default function TriplicateBillingPage() {
                     ref={el => (step2Refs.current["vatav"] = el)}
                     type="number"
                     step="0.01"
+                    inputMode="decimal"
                     min="0"
                     placeholder="0.00"
                     value={billForm.vatav}
@@ -1089,6 +1101,7 @@ export default function TriplicateBillingPage() {
                   <input
                     type="number"
                     step="0.01"
+                    inputMode="decimal"
                     placeholder="0.00"
                     value={billForm.diff}
                     onChange={e => setBillForm({ ...billForm, diff: e.target.value })}

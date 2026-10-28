@@ -520,3 +520,408 @@
   padding: 12px 14px;
   color: #0F172A;
 }
+
+/* ==========================================================================
+   DYNAMIC MOBILE & DESKTOP CONTROLS FOR FARMER PROCUREMENT
+   ========================================================================== */
+
+/* Daily Purchase Controls */
+.daily-purchase-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.view-mode-toggle {
+  display: inline-flex;
+  background: #E2E8F0;
+  padding: 3px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: #475569;
+  transition: all 0.15s;
+}
+
+.view-toggle-btn.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.daily-filter-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.control-field-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 0 8px;
+  height: 32px;
+}
+
+.control-label {
+  font-weight: 700;
+  color: #475569;
+}
+
+.control-input-date {
+  border: none !important;
+  background: transparent !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  width: 90px;
+  outline: none;
+}
+
+.control-input-search {
+  border: none !important;
+  background: transparent !important;
+  font-size: 11px !important;
+  width: 160px;
+  outline: none;
+}
+
+.daily-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Rapid KB Banner */
+.rapid-kb-banner {
+  background: #F0FDF4;
+  border-bottom: 1px solid #BBF7D0;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #166534;
+}
+
+/* Touch Cards View for Daily Purchase */
+.farmer-cards-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #F8FAFC;
+}
+
+.farmer-mobile-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.farmer-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.farmer-card-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.farmer-sr-pill {
+  background: #0F172A;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+}
+
+.farmer-card-name {
+  font-size: 13px;
+  color: #0F172A;
+}
+
+.farmer-village-pill {
+  font-size: 11px;
+  background: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #BFDBFE;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.farmer-card-fields {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.farmer-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.farmer-card-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.farmer-field-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.farmer-field-box label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.farmer-input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #FFFFFF;
+  color: #0F172A;
+}
+
+.farmer-input:focus {
+  border-color: #3B82F6;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.farmer-field-box.highlight-field .farmer-input {
+  background: #F8FAFC;
+  font-weight: 700;
+}
+
+.farmer-card-amount-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.card-amount-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #166534;
+  text-transform: uppercase;
+}
+
+.card-amount-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: #15803D;
+}
+
+.mobile-add-farmer-btn {
+  width: 100%;
+  height: 42px;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  background: #EFF6FF !important;
+  color: #1D4ED8 !important;
+  border: 1.5px dashed #93C5FD !important;
+  border-radius: 8px;
+}
+
+/* Mobile Scroll Hint for tables */
+.mobile-scroll-hint {
+  display: none;
+  font-size: 11px;
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 6px 12px;
+  text-align: center;
+  border-bottom: 1px solid #E2E8F0;
+  font-weight: 600;
+}
+
+/* Daily Procurement Totals Bar */
+.daily-procurement-totals {
+  background: #F8FAFC;
+  border-top: 2px solid #E2E8F0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.daily-total-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.daily-total-label {
+  font-size: 10px;
+  color: #64748B;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.daily-total-val {
+  font-size: 17px;
+  color: #0F172A;
+  font-weight: 800;
+}
+
+.daily-total-val.amber {
+  color: #D97706;
+}
+
+.daily-total-val.green {
+  color: #16A34A;
+  font-size: 19px;
+}
+
+.daily-total-val.count {
+  color: #1E293B;
+  font-size: 14px;
+}
+
+/* Report Subtabs */
+.report-subtabs {
+  display: flex;
+  gap: 8px;
+  background: #F1F5F9;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+
+.report-subtab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.report-subtab.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+/* Report Filters Wrapper */
+.report-filters-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.report-filter-date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-filter-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.report-filter-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.report-filter-field .filter-label {
+  font-weight: 700;
+  color: #475569;
+}
+
+.filter-input {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid #CBD5E1;
+  font-size: 11px;
+  background: #FFFFFF;
+}
+
+.filter-select {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid #CBD5E1;
+  font-size: 11px;
+  font-weight: 700;
+  background: #FFFFFF;
+}
+
+.report-filter-field.search-field {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 0 8px;
+  height: 32px;
+}
+
+.filter-input.search-input {
+  border: none;
+  padding: 0 4px;
+  width: 140px;
+  outline: none;
+}

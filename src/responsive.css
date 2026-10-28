@@ -433,18 +433,53 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     text-align: center !important;
   }
 
-  /* Topbar Responsive */
+  /* Topbar Responsive: Eliminate overlap on mobile */
+  .topbar-module-switcher {
+    display: none !important;
+  }
+
+  .today-pill {
+    display: none !important;
+  }
+
+  .topbar {
+    height: 56px !important;
+    overflow: hidden !important;
+    padding: 0 12px !important;
+    justify-content: space-between !important;
+  }
+
+  .topbar-left {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
   .topbar-actions {
-    overflow-x: auto;
-    max-width: 60%;
+    overflow: visible !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    gap: 8px !important;
+  }
+
+  .crumb-workspace, .crumb-slash {
+    display: none !important;
+  }
+
+  .crumb-current {
+    font-size: 13px !important;
+    max-width: 200px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
   }
 
   /* Factory Brand Strip on Mobile */
   .factory-brand-strip {
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 10px !important;
-    padding: 14px 16px !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
   }
 
   .factory-brand-strip .brand-left {
@@ -453,10 +488,16 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     gap: 6px !important;
   }
 
+  .factory-brand-strip h3 {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+  }
+
   .factory-brand-strip .brand-meta {
     width: 100% !important;
     justify-content: space-between !important;
     flex-wrap: wrap !important;
+    font-size: 10.5px !important;
   }
 
   /* Container Header Bar on Mobile */
@@ -464,31 +505,93 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 12px !important;
-    padding: 14px 16px !important;
-  }
-
-  .container-header-bar > div:last-child {
-    width: 100% !important;
-    justify-content: flex-start !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-
-  .container-header-bar input,
-  .container-header-bar select {
-    width: 100% !important;
-    height: 38px !important;
-  }
-
-  /* Party Entities Grid: Single column on small devices */
-  .party-entities-grid {
-    grid-template-columns: 1fr !important;
     padding: 12px 14px !important;
+  }
+
+  /* Farmer Master Registration Layout (Form first, static aside second) */
+  .farmer-master-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  .farmer-master-layout .form-main {
+    order: 1 !important;
+    width: 100% !important;
+  }
+
+  .farmer-master-layout .form-aside {
+    order: 2 !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
+  /* Stepper Bar on Mobile: Clean pills without text clipping */
+  .contract-stepper {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+  }
+
+  .contract-stepper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stepper-tab {
+    flex: 1 1 0 !important;
+    min-width: 95px !important;
+    padding: 8px 6px !important;
+    border-radius: 8px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  .stepper-tab .stepper-num {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 11px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .stepper-label strong {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    display: block !important;
+  }
+
+  .stepper-label span {
+    display: none !important; /* Hide verbose subtitle so tabs fit cleanly without cutting off */
+  }
+
+  /* Party Entities Grid: Seller first, Dalal & Buyer underneath */
+  .party-entities-grid {
+    display: flex !important;
+    flex-direction: column !important;
     gap: 10px !important;
+    padding: 12px 14px !important;
   }
 
   .entity-box {
     padding: 12px !important;
+    width: 100% !important;
+  }
+
+  .entity-box.seller-box {
+    order: 1 !important;
+    border-left: 4px solid #3B82F6 !important;
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.1) !important;
+  }
+
+  .entity-box.dalal-box {
+    order: 2 !important;
+  }
+
+  .entity-box.buyer-box {
+    order: 3 !important;
   }
 
   /* Consignment Metadata Bar */
@@ -496,6 +599,11 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     padding: 12px 14px !important;
     gap: 8px !important;
+  }
+
+  .meta-item input, .meta-item select {
+    height: 38px !important;
+    font-size: 14px !important;
   }
 
   /* Weighment Cards Grid */
@@ -509,7 +617,7 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
   }
 
   .weigh-card {
-    padding: 8px 10px !important;
+    padding: 10px 10px !important;
   }
 
   .weigh-card-label {
@@ -517,13 +625,13 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
   }
 
   .weigh-card input {
-    height: 38px !important;
-    font-size: 15px !important;
+    height: 40px !important;
+    font-size: 16px !important;
   }
 
   .weigh-card-value {
-    font-size: 15px !important;
-    padding: 4px 0 !important;
+    font-size: 16px !important;
+    padding: 6px 0 !important;
   }
 
   /* Case Type Split Container (Payment & Remarks) */
@@ -546,13 +654,15 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
   .casetype-toggle-group {
     width: 100% !important;
     display: flex !important;
+    gap: 6px !important;
   }
 
   .casetype-toggle-btn {
     flex: 1 !important;
     text-align: center !important;
-    padding: 8px 6px !important;
-    font-size: 11px !important;
+    padding: 9px 8px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
   }
 
   /* Denomination Currency Drawer */
@@ -566,15 +676,16 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
   }
 
   .currency-slot input {
-    height: 34px !important;
-    font-size: 14px !important;
+    height: 36px !important;
+    font-size: 15px !important;
   }
 
   .currency-balance-pill {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 4px !important;
-    padding: 8px 10px !important;
+    padding: 10px 12px !important;
+    font-size: 11.5px !important;
   }
 
   /* 4 Signatures Grid */
@@ -585,53 +696,161 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
   }
 
   .sign-box {
-    padding: 8px 6px !important;
+    padding: 10px 6px !important;
   }
 
   .sign-line {
     height: 18px !important;
   }
 
-  /* Responsive Subtabs */
-  .report-subtabs-nav {
-    flex-direction: column !important;
-    gap: 6px !important;
-  }
-
-  .report-subtab {
-    width: 100% !important;
-    text-align: center !important;
-    justify-content: center !important;
-    padding: 10px 14px !important;
-  }
-
-  /* Stepper Bar on Mobile */
-  .contract-stepper {
-    overflow-x: auto !important;
-    white-space: nowrap !important;
+  /* Daily Purchase Mobile Controls */
+  .daily-purchase-controls {
     display: flex !important;
-    scrollbar-width: none !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
   }
 
-  .contract-stepper::-webkit-scrollbar {
+  .daily-filter-inputs {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .control-field-group {
+    height: 38px !important;
+  }
+
+  .control-field-group.search-group {
+    flex: 1 !important;
+  }
+
+  .control-input-date {
+    width: 85px !important;
+    font-size: 13px !important;
+  }
+
+  .control-input-search {
+    width: 100% !important;
+    font-size: 13px !important;
+  }
+
+  .daily-action-btns {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .daily-action-btns .button {
+    flex: 1 !important;
+    justify-content: center !important;
+    height: 38px !important;
+    font-size: 12px !important;
+  }
+
+  .rapid-kb-banner {
+    padding: 8px 12px !important;
+    font-size: 11px !important;
+  }
+
+  .desktop-kb-tip, .desktop-kb-tag {
+    display: none !important;
+  }
+
+  /* Auto-Refreshing Daily Procurement Totals on Mobile */
+  .daily-procurement-totals {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .daily-total-metric {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    padding: 10px 12px !important;
+  }
+
+  .daily-total-metric.highlight-amount {
+    grid-column: 1 / -1 !important;
+    background: #F0FDF4 !important;
+    border-color: #BBF7D0 !important;
+  }
+
+  .daily-total-val.green {
+    font-size: 18px !important;
+  }
+
+  /* Report Subtabs & Filters on Mobile */
+  .report-subtabs {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 12px !important;
+  }
+
+  .report-subtabs::-webkit-scrollbar {
     display: none;
   }
 
-  .stepper-tab {
-    flex: 0 0 auto !important;
-    min-width: 140px !important;
+  .report-subtab {
+    flex: 1 0 auto !important;
+    min-width: 105px !important;
+    padding: 8px 10px !important;
+    font-size: 11px !important;
   }
 
-  /* Smooth horizontal scroll for table with mobile indicators */
+  .report-filters-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .report-filter-date-row {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .report-filter-action-row {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .report-filter-field {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .filter-input, .filter-select {
+    height: 38px !important;
+    font-size: 13px !important;
+    width: 100% !important;
+  }
+
+  .report-filter-field.search-field {
+    height: 38px !important;
+  }
+
+  /* Smooth horizontal scroll with visible indicator */
   .table-scroll {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    position: relative;
-    border-radius: 8px;
+    position: relative !important;
+    border-radius: 8px !important;
+  }
+
+  .mobile-scroll-hint {
+    display: block !important;
   }
 
   .modern-report-table {
-    min-width: 680px;
+    min-width: 640px !important;
   }
 
   /* Step Navigation & Action Buttons */
@@ -664,5 +883,9 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
 
   .stat-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .report-filter-action-row {
+    flex-direction: column !important;
   }
 }

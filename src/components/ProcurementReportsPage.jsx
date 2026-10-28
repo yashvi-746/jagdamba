@@ -137,31 +137,34 @@ export default function ProcurementReportsPage() {
       {/* Subtabs matching legacy reports */}
       <div className="report-subtabs">
         <button
+          type="button"
           className={`report-subtab ${activeTab === "heap" ? "active" : ""}`}
           onClick={() => setActiveTab("heap")}
         >
-          <BarChart3 size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-          1. Heap-Wise Average Report (Page 8)
+          <BarChart3 size={15} />
+          <span>1. Heap-Wise Average (Page 8)</span>
         </button>
 
         <button
+          type="button"
           className={`report-subtab ${activeTab === "cash" ? "active" : ""}`}
           onClick={() => setActiveTab("cash")}
         >
-          <Coins size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-          2. Cash Purchase Register ({cashBills.length})
+          <Coins size={15} />
+          <span>2. Cash Register ({cashBills.length})</span>
         </button>
 
         <button
+          type="button"
           className={`report-subtab ${activeTab === "debit" ? "active" : ""}`}
           onClick={() => setActiveTab("debit")}
         >
-          <CreditCard size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-          3. Debit Purchase Register ({debitBills.length})
+          <CreditCard size={15} />
+          <span>3. Debit Register ({debitBills.length})</span>
         </button>
       </div>
 
-      {/* CONTAINER 1: Filter & Query Bar (Matching Pages 5 & 7 Dialogs) */}
+      {/* CONTAINER 1: Filter & Query Bar */}
       <div className="modern-procurement-card" style={{ marginBottom: 18 }}>
         <div className="container-header-bar">
           <div className="container-title">
@@ -169,54 +172,58 @@ export default function ProcurementReportsPage() {
             <span className="container-badge">Handod Procurement Unit</span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-              <span style={{ fontWeight: 700, color: "#475569" }}>From:</span>
-              <input
-                type="text"
-                value={fromDate}
-                onChange={e => setFromDate(e.target.value)}
-                style={{ height: 32, padding: "0 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11, width: 95 }}
-              />
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-              <span style={{ fontWeight: 700, color: "#475569" }}>To:</span>
-              <input
-                type="text"
-                value={toDate}
-                onChange={e => setToDate(e.target.value)}
-                style={{ height: 32, padding: "0 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11, width: 95 }}
-              />
-            </div>
-
-            {activeTab === "heap" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <span style={{ fontWeight: 700, color: "#475569" }}>Heap:</span>
-                <select
-                  value={selectedHeap}
-                  onChange={e => setSelectedHeap(e.target.value)}
-                  style={{ height: 32, padding: "0 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11, fontWeight: 700 }}
-                >
-                  <option value="ALL">All Heaps (6 to 14)</option>
-                  <option value="6">Heap #6</option>
-                  <option value="7">Heap #7</option>
-                  <option value="8">Heap #8</option>
-                  <option value="9">Heap #9</option>
-                  <option value="10">Heap #10</option>
-                </select>
+          <div className="report-filters-wrapper">
+            <div className="report-filter-date-row">
+              <div className="report-filter-field">
+                <span className="filter-label">From:</span>
+                <input
+                  type="text"
+                  value={fromDate}
+                  onChange={e => setFromDate(e.target.value)}
+                  className="filter-input"
+                />
               </div>
-            )}
 
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-              <Search size={14} color="#64748b" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{ height: 32, padding: "0 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11, width: 150 }}
-              />
+              <div className="report-filter-field">
+                <span className="filter-label">To:</span>
+                <input
+                  type="text"
+                  value={toDate}
+                  onChange={e => setToDate(e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+            </div>
+
+            <div className="report-filter-action-row">
+              {activeTab === "heap" && (
+                <div className="report-filter-field heap-field">
+                  <span className="filter-label">Heap:</span>
+                  <select
+                    value={selectedHeap}
+                    onChange={e => setSelectedHeap(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="ALL">All Heaps (6 to 14)</option>
+                    <option value="6">Heap #6</option>
+                    <option value="7">Heap #7</option>
+                    <option value="8">Heap #8</option>
+                    <option value="9">Heap #9</option>
+                    <option value="10">Heap #10</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="report-filter-field search-field">
+                <Search size={14} color="#64748b" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="filter-input search-input"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -285,6 +292,9 @@ export default function ProcurementReportsPage() {
             </div>
 
             <div className="table-scroll">
+              <div className="mobile-scroll-hint">
+                👈 Swipe horizontally to view heap columns 👉
+              </div>
               {filteredHeapList.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "50px 20px", color: "#64748b" }}>
                   <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>No heaps recorded in active factory register.</p>
@@ -354,6 +364,9 @@ export default function ProcurementReportsPage() {
           </div>
 
           <div className="table-scroll">
+            <div className="mobile-scroll-hint">
+              👈 Swipe horizontally to view full register columns 👉
+            </div>
             {cashBills.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
                 <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>No cash purchase vouchers recorded.</p>
@@ -422,6 +435,9 @@ export default function ProcurementReportsPage() {
           </div>
 
           <div className="table-scroll">
+            <div className="mobile-scroll-hint">
+              👈 Swipe horizontally to view full register columns 👉
+            </div>
             {debitBills.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 20px", color: "#64748b" }}>
                 <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>No debit credit vouchers recorded.</p>

@@ -242,12 +242,16 @@ export default function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="topbar-left">
-            <button className="icon-button menu-toggle" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
-            <div className="breadcrumbs"><span>{moduleName} Workspace</span><span className="crumb-slash">/</span><strong>{pageTitle}</strong></div>
+            <button className="icon-button menu-toggle" onClick={() => setMobileOpen(true)} aria-label="Open navigation menu"><Menu size={20}/></button>
+            <div className="breadcrumbs">
+              <span className="crumb-workspace">{moduleName} Workspace</span>
+              <span className="crumb-slash">/</span>
+              <strong className="crumb-current">{pageTitle}</strong>
+            </div>
           </div>
           <div className="topbar-actions">
-            {/* Quick Switcher */}
-            <div style={{ display: "flex", gap: 6, background: "#f1f5f9", padding: 3, borderRadius: 8 }}>
+            {/* Quick Switcher (Desktop only; on mobile it is in the slide-out menu) */}
+            <div className="topbar-module-switcher">
               <button
                 onClick={() => switchModule("cotton_seed")}
                 style={{
@@ -271,7 +275,7 @@ export default function App() {
             </div>
 
             <div className="today-pill"><CalendarDays size={15}/>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
-            <div className="top-avatar">BO</div>
+            <div className="top-avatar" title="Broker Office Authorized">BO</div>
           </div>
         </header>
 

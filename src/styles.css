@@ -317,6 +317,14 @@ button:disabled {
   gap: 14px;
 }
 
+.topbar-module-switcher {
+  display: flex;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+}
+
 .today-pill {
   display: flex;
   align-items: center;
