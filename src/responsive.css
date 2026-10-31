@@ -938,31 +938,76 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     color: #0f172a !important;
   }
 
-  /* Gate Passes & Workflow List Responsiveness */
+  /* Gate Passes & Workflow List Responsiveness: Clean Responsive Card Layout */
   .table-scroll {
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    background: #ffffff;
+    border: none !important;
+    background: transparent !important;
     width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow-x: visible !important;
   }
 
   .data-table {
+    display: block !important;
     width: 100% !important;
-    min-width: 540px !important;
-    table-layout: auto !important;
+    min-width: 0 !important;
+    border: none !important;
   }
 
-  .data-table th, .data-table td {
-    padding: 10px 14px !important;
-    font-size: 12.5px !important;
-    white-space: nowrap !important;
+  .data-table thead {
+    display: none !important; /* Hide rigid table headers on mobile */
   }
 
-  .data-table td:nth-child(2) {
-    white-space: nowrap !important;
-    min-width: unset !important;
+  .data-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .data-table tbody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 14px 16px !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05) !important;
+    gap: 8px !important;
+  }
+
+  .data-table td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+    font-size: 13px !important;
+    white-space: normal !important;
+    min-width: 0 !important;
+  }
+
+  .data-table td:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Dynamic Labels for Cards from data-label attributes */
+  .data-table td::before {
+    content: attr(data-label);
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-right: 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .data-table td strong {
+    color: #0f172a !important;
+    font-size: 14px !important;
+    font-weight: 750 !important;
+    text-align: right !important;
   }
 
   /* Farmer Daily Purchase Cards Optimization */

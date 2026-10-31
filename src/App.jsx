@@ -659,19 +659,19 @@ function ContractTable({ contracts, onOpen, isNetCotton = false, compact = false
 
             return (
               <tr key={c.id} onClick={() => onOpen && onOpen(c.id)} className={onOpen ? "clickable-row" : ""}>
-                <td>
+                <td data-label="Contract No.">
                   <strong className="contract-code">{c.contract_number || "Draft"}</strong>
                   <small className="cell-sub">{c.commodity}</small>
                 </td>
-                <td><span className="party-cell" style={{ fontWeight: 600, color: "#0f172a" }}>{c.party_name || "—"}</span></td>
-                <td><span style={{ color: "#64748b", fontSize: 12.5 }}>{c.contract_date || "—"}</span></td>
-                <td><strong>{c.quantity || "—"}</strong></td>
+                <td data-label="Party Name"><span className="party-cell" style={{ fontWeight: 600, color: "#0f172a" }}>{c.party_name || "—"}</span></td>
+                <td data-label="Date"><span style={{ color: "#64748b", fontSize: 12.5 }}>{c.contract_date || "—"}</span></td>
+                <td data-label="Quantity"><strong>{c.quantity || "—"}</strong></td>
                 {isNetCotton ? (
-                  <td>{c.rate_per_candy ? `₹${Number(c.rate_per_candy).toLocaleString("en-IN")}` : "—"}</td>
+                  <td data-label="Rate">{c.rate_per_candy ? `₹${Number(c.rate_per_candy).toLocaleString("en-IN")}` : "—"}</td>
                 ) : (
-                  <td>{c.rate_per_quintal ? `₹${Number(c.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</td>
+                  <td data-label="Rate">{c.rate_per_quintal ? `₹${Number(c.rate_per_quintal).toLocaleString("en-IN")}` : "—"}</td>
                 )}
-                <td>
+                <td data-label="Total Amount">
                   {totalWithGst > 0 ? (
                     <strong style={{ color: "#16a34a", fontSize: 13 }}>
                       ₹{Math.round(totalWithGst).toLocaleString("en-IN")}
@@ -679,15 +679,15 @@ function ContractTable({ contracts, onOpen, isNetCotton = false, compact = false
                   ) : "—"}
                 </td>
                 {isNetCotton ? (
-                  <td>
+                  <td data-label="PR / Lot">
                     <small style={{ fontWeight: 600, color: "#64748b" }}>
                       {c.pr_no ? `PR: ${c.pr_no}` : ""} {c.lot_no ? `| Lot: ${c.lot_no}` : ""}
                     </small>
                   </td>
                 ) : (
-                  <td><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
+                  <td data-label="Packing"><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
                 )}
-                <td><StatusBadge status={c.status}/></td>
+                <td data-label="Status"><StatusBadge status={c.status}/></td>
                 {!compact && <td><ArrowRight size={16} className="row-arrow"/></td>}
               </tr>
             );
@@ -2066,11 +2066,11 @@ function GatePasses({ data, activeModule }) {
             <tbody>
               {passes.map(p => (
                 <tr key={p.id}>
-                  <td><strong className="contract-code">{p.gate_pass_number}</strong></td>
-                  <td>{p.contracts?.contract_number}</td>
-                  <td>{p.contracts?.party_name}</td>
-                  <td>{new Date(p.created_at).toLocaleDateString("en-IN")}</td>
-                  <td><StatusBadge status="completed"/></td>
+                  <td data-label="Gate Pass"><strong className="contract-code">{p.gate_pass_number}</strong></td>
+                  <td data-label="Contract">{p.contracts?.contract_number}</td>
+                  <td data-label="Party">{p.contracts?.party_name}</td>
+                  <td data-label="Date">{new Date(p.created_at).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Status"><StatusBadge status="completed"/></td>
                 </tr>
               ))}
             </tbody>
@@ -2105,10 +2105,10 @@ function PartiesPage({ data, activeModule }) {
             <tbody>
               {demoParties.map((p, i) => (
                 <tr key={i}>
-                  <td><strong>{p.name}</strong></td>
-                  <td>{p.gst_number || "—"}</td>
-                  <td>{p.contact_number || "—"}</td>
-                  <td>{p.address || "—"}</td>
+                  <td data-label="Party Name"><strong>{p.name}</strong></td>
+                  <td data-label="GST Number">{p.gst_number || "—"}</td>
+                  <td data-label="Contact">{p.contact_number || "—"}</td>
+                  <td data-label="Address">{p.address || "—"}</td>
                 </tr>
               ))}
             </tbody>
