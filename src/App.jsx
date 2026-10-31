@@ -5,9 +5,10 @@ import {
   FileCheck2, FilePlus2, FileText, LayoutDashboard, LogOut, Menu,
   PackageCheck, Plus, Search, ShieldCheck, Truck, Users, X, Mail, MessageCircle,
   Send, Lock, KeyRound, Eye, EyeOff, Coins, Layers, Receipt, UserPlus, Scale, BarChart3,
-  CreditCard, CornerDownLeft, Sparkles
+  CreditCard, CornerDownLeft, Sparkles, Wifi, WifiOff, RefreshCw
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
+import { getOfflineQueue, syncOfflineQueue } from "./lib/offlineSync";
 import { generateContractPdf, generateGatePassPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
 import DailyPurchasePage from "./components/DailyPurchasePage";
 import TriplicateBillingPage from "./components/TriplicateBillingPage";
@@ -162,6 +163,42 @@ export default function App() {
     localStorage.setItem("seedledger_offline_mode", "true");
   }} />;
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlinePending, setOfflinePending] = useState(() => getOfflineQueue().length);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      triggerSync();
+    };
+    const handleOffline = () => setIsOnline(false);
+    const handleQueueChange = () => setOfflinePending(getOfflineQueue().length);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("offline-queue-changed", handleQueueChange);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("offline-queue-changed", handleQueueChange);
+    };
+  }, []);
+
+  const triggerSync = async () => {
+    if (!navigator.onLine || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await syncOfflineQueue();
+      setOfflinePending(getOfflineQueue().length);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const moduleName = activeModule === "net_cotton" ? "Net Cotton" : "Cotton Seed";
   const commodityName = activeModule === "net_cotton" ? "COTTON BALES" : "COTTON SEED";
 
@@ -272,6 +309,43 @@ export default function App() {
               >
                 Module 2: Net Cotton (15 fields)
               </button>
+            </div>
+
+            {/* Network / Offline Sync Status Badge */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "5px 10px",
+                borderRadius: 20,
+                fontSize: 11,
+                fontWeight: 700,
+                background: !isOnline ? "#fef2f2" : offlinePending > 0 ? "#fffbeb" : "#f0fdf4",
+                color: !isOnline ? "#ef4444" : offlinePending > 0 ? "#b45309" : "#16a34a",
+                border: `1px solid ${!isOnline ? "#fecaca" : offlinePending > 0 ? "#fde68a" : "#bbf7d0"}`
+              }}
+              title={!isOnline ? "Working offline. Entries stored locally in factory device." : offlinePending > 0 ? `${offlinePending} items queued to sync` : "All factory records synced"}
+            >
+              {!isOnline ? (
+                <>
+                  <WifiOff size={13} />
+                  <span>Offline</span>
+                </>
+              ) : offlinePending > 0 ? (
+                <button
+                  onClick={triggerSync}
+                  style={{ background: "none", border: "none", color: "inherit", font: "inherit", display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", padding: 0 }}
+                >
+                  <RefreshCw size={12} className={isSyncing ? "spin-sync" : ""} />
+                  <span>Sync ({offlinePending})</span>
+                </button>
+              ) : (
+                <>
+                  <Wifi size={13} />
+                  <span>Online</span>
+                </>
+              )}
             </div>
 
             <div className="today-pill"><CalendarDays size={15}/>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
