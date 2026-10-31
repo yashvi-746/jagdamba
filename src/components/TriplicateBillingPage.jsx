@@ -378,17 +378,19 @@ export default function TriplicateBillingPage() {
             Raw cotton weighbridge settlement with cash currency drawer breakdown and multi-copy vouchers.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="page-heading-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap", width: "100%" }}>
           <button
             className="button secondary"
             onClick={handleResetForm}
             title="Clear all fields"
+            style={{ flex: "1 1 140px", justifyContent: "center" }}
           >
             Clear / Blank Form
           </button>
           <button
             className={`button ${activeStep === 3 ? "primary" : "secondary"}`}
             onClick={() => setActiveStep(3)}
+            style={{ flex: "1 1 140px", justifyContent: "center" }}
           >
             <FileText size={15} /> Saved Bills ({bills.length})
           </button>

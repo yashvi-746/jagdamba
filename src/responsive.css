@@ -1120,3 +1120,88 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ==========================================================================
+   TRIPLICATE BILLING & STEPPER MOBILE ENHANCEMENTS
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Stepper Tab Mobile Optimization */
+  .contract-stepper, .triplicate-stepper {
+    display: flex !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 6px !important;
+    background: #ffffff !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 16px !important;
+  }
+
+  .triplicate-stepper .stepper-tab {
+    flex: 1 1 0 !important;
+    min-width: 90px !important;
+    padding: 8px 4px !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 4px !important;
+    border: none !important;
+  }
+
+  .triplicate-stepper .stepper-num {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 11px !important;
+  }
+
+  .triplicate-stepper .stepper-label strong {
+    font-size: 10px !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    display: block !important;
+    text-align: center !important;
+  }
+
+  .triplicate-stepper .stepper-label span {
+    display: none !important;
+  }
+
+  /* Saved Triplicate Bills Register Header Controls */
+  .modern-procurement-card .container-header-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .modern-procurement-card .container-header-bar > div:last-child {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .modern-procurement-card .container-header-bar input {
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 38px !important;
+  }
+
+  .modern-procurement-card .container-header-bar .button {
+    width: 100% !important;
+    justify-content: center !important;
+    height: 38px !important;
+  }
+
+  /* Rapid Keyboard Banner */
+  .rapid-kb-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .desktop-kb-tip, .desktop-kb-tag {
+    display: none !important;
+  }
+}
