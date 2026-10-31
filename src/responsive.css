@@ -30,6 +30,38 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
 }
 
 /* 2. Global Panel & Card Spacing Consistency */
+.page-heading {
+  display: flex;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+  margin-bottom: 20px;
+}
+
+.page-heading > div:first-child {
+  display: flex;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100%;
+}
+
+.page-heading .eyebrow {
+  display: block !important;
+  margin-bottom: 4px !important;
+  line-height: 1.3 !important;
+}
+
+.page-heading h1 {
+  display: block !important;
+  margin: 0 !important;
+  line-height: 1.25 !important;
+}
+
+.page-heading p {
+  display: block !important;
+  margin-top: 4px !important;
+}
+
 .panel {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-light);
@@ -81,12 +113,6 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
 
 .data-table th, .data-table td {
   white-space: nowrap;
-}
-
-.data-table th:nth-child(2),
-.data-table td:nth-child(2) {
-  white-space: normal;
-  min-width: 160px;
 }
 
 /* Uniform Status Badge */
@@ -912,20 +938,31 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
     color: #0f172a !important;
   }
 
-  /* Gate Passes List Responsiveness */
+  /* Gate Passes & Workflow List Responsiveness */
   .table-scroll {
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     background: #ffffff;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .data-table {
-    min-width: 580px;
+    width: 100% !important;
+    min-width: 540px !important;
+    table-layout: auto !important;
   }
 
   .data-table th, .data-table td {
-    padding: 10px 12px !important;
-    font-size: 12px !important;
+    padding: 10px 14px !important;
+    font-size: 12.5px !important;
+    white-space: nowrap !important;
+  }
+
+  .data-table td:nth-child(2) {
+    white-space: nowrap !important;
+    min-width: unset !important;
   }
 
   /* Farmer Daily Purchase Cards Optimization */
