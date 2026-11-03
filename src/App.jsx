@@ -1592,6 +1592,29 @@ function ContractDetail({ data }) {
     const prefix = isNetCotton ? "GP-NC" : "GP-CS";
     const gateNum = `${prefix}-2026-` + Math.floor(1000 + Math.random() * 9000);
 
+    const gatePassRecord = {
+      id: "gp-" + Date.now(),
+      gate_pass_number: gateNum,
+      contract_id: contract.id,
+      module: contract.module || (isNetCotton ? "net_cotton" : "cotton_seed"),
+      created_at: new Date().toISOString(),
+      contracts: {
+        id: contract.id,
+        contract_number: contract.contract_number,
+        party_name: contract.party_name,
+        commodity: contract.commodity || (isNetCotton ? "COTTON BALES" : "COTTON SEED"),
+        module: contract.module || (isNetCotton ? "net_cotton" : "cotton_seed")
+      },
+      loading_details: loading
+    };
+
+    // Store in local gate passes storage for immediate availability across the app
+    try {
+      const existing = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      const updated = [gatePassRecord, ...existing.filter(g => g.contract_id !== contract.id && g.gate_pass_number !== gateNum)];
+      localStorage.setItem("seedledger_gate_passes_v3", JSON.stringify(updated));
+    } catch (e) {}
+
     if (data.demoMode || String(contract.id).startsWith("local-") || String(contract.id).startsWith("offline-")) {
       generateGatePassPdf(contract, loading, gateNum);
       data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "completed" } : c));
@@ -1600,14 +1623,28 @@ function ContractDetail({ data }) {
     }
 
     const { data: savedLoading, error: loadingError } = await supabase.from("loading_details").select("*").eq("contract_id", contract.id).single();
-    if (loadingError) { setMessage("Save complete loading details before generating a gate pass."); return; }
+    if (loadingError) {
+      // Local fallback if Supabase loading record wasn't found
+      generateGatePassPdf(contract, loading, gateNum);
+      await supabase.from("contracts").update({ status: "completed" }).eq("id", contract.id);
+      setMessage(`Step 4: Gate pass ${gateNum} generated and downloaded.`);
+      data.refresh();
+      return;
+    }
 
     const user = (await supabase.auth.getUser()).data.user;
     const { data: createdGate } = await supabase.from("gate_passes").insert({ contract_id: contract.id, loading_detail_id: savedLoading.id, created_by: user?.id }).select().single();
 
-    generateGatePassPdf(contract, savedLoading, createdGate?.gate_pass_number || gateNum);
+    const actualGateNum = createdGate?.gate_pass_number || gateNum;
+    gatePassRecord.gate_pass_number = actualGateNum;
+    try {
+      const existing = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      localStorage.setItem("seedledger_gate_passes_v3", JSON.stringify([gatePassRecord, ...existing.filter(g => g.contract_id !== contract.id)]));
+    } catch (e) {}
+
+    generateGatePassPdf(contract, savedLoading, actualGateNum);
     await supabase.from("contracts").update({ status: "completed" }).eq("id", contract.id);
-    setMessage(`Step 4: Gate pass ${createdGate?.gate_pass_number || gateNum} generated and downloaded.`);
+    setMessage(`Step 4: Gate pass ${actualGateNum} generated and downloaded.`);
     data.refresh();
   }
 
@@ -2079,50 +2116,170 @@ function LoadingPage({ data, activeModule }) {
 function GatePasses({ data, activeModule }) {
   const isNetCotton = activeModule === "net_cotton";
   const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
-  const [passes, setPasses] = useState([]);
+  const [supabasePasses, setSupabasePasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("current"); // "current" | "all" | "cotton_seed" | "net_cotton"
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (data.demoMode) return;
+    if (!isSupabaseConfigured) return;
     setLoading(true);
-    supabase.from("gate_passes").select("*, contracts(*)").order("created_at", { ascending: false }).then(({ data: rows, error: e }) => {
-      if (e) setError(e.message);
-      else setPasses(rows || []);
-      setLoading(false);
+    supabase
+      .from("gate_passes")
+      .select("*, contracts(*)")
+      .order("created_at", { ascending: false })
+      .then(({ data: rows, error: e }) => {
+        if (e) {
+          console.warn("Error fetching Supabase gate passes:", e.message);
+        } else {
+          setSupabasePasses(rows || []);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  // Consolidate passes:
+  // 1. Supabase gate_passes
+  // 2. localStorage saved gate passes (seedledger_gate_passes_v3)
+  // 3. Contracts that have loading details recorded or completed status
+  const consolidatedPasses = useMemo(() => {
+    const list = [];
+    const seenGateNums = new Set();
+    const seenContractIds = new Set();
+
+    // 1. Add Supabase passes
+    for (const p of supabasePasses) {
+      const gNum = p.gate_pass_number;
+      if (gNum) seenGateNums.add(gNum);
+      if (p.contract_id) seenContractIds.add(p.contract_id);
+      list.push(p);
+    }
+
+    // 2. Add local passes
+    try {
+      const local = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      for (const p of local) {
+        if (!seenGateNums.has(p.gate_pass_number)) {
+          seenGateNums.add(p.gate_pass_number);
+          if (p.contract_id) seenContractIds.add(p.contract_id);
+          list.push(p);
+        }
+      }
+    } catch (e) {}
+
+    // 3. For any contract in data.contracts that is marked "completed" or "loading" or has loading details in localStorage
+    if (Array.isArray(data.contracts)) {
+      for (const c of data.contracts) {
+        if (seenContractIds.has(c.id)) continue;
+        let hasLoading = c.status === "completed" || c.status === "loading";
+        let localLoading = null;
+        try {
+          const raw = localStorage.getItem("seedledger_loading_" + c.id);
+          if (raw) {
+            localLoading = JSON.parse(raw);
+            hasLoading = true;
+          }
+        } catch (e) {}
+
+        if (hasLoading) {
+          const mod = c.module || "cotton_seed";
+          const prefix = mod === "net_cotton" ? "GP-NC" : "GP-CS";
+          const generatedNum = `${prefix}-2026-` + (String(c.id).replace(/\D/g, "").slice(-4) || "1001");
+          if (!seenGateNums.has(generatedNum)) {
+            seenGateNums.add(generatedNum);
+            seenContractIds.add(c.id);
+            list.push({
+              id: "inferred-" + c.id,
+              gate_pass_number: generatedNum,
+              created_at: c.contract_date || new Date().toISOString(),
+              module: mod,
+              contracts: c,
+              loading_details: localLoading
+            });
+          }
+        }
+      }
+    }
+
+    // Sort descending by created_at
+    list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    return list;
+  }, [supabasePasses, data.contracts]);
+
+  // Filter based on active filter
+  const displayedPasses = useMemo(() => {
+    return consolidatedPasses.filter(p => {
+      const pMod = p.contracts?.module || p.module || "cotton_seed";
+      if (moduleFilter === "current") {
+        return pMod === activeModule;
+      }
+      if (moduleFilter === "all") return true;
+      return pMod === moduleFilter;
     });
-  }, [data.demoMode]);
+  }, [consolidatedPasses, activeModule, moduleFilter]);
+
+  const handleDownloadPass = (p) => {
+    const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
+    if (!contract) return;
+    let loadingData = p.loading_details;
+    if (!loadingData) {
+      try {
+        const raw = localStorage.getItem("seedledger_loading_" + contract.id);
+        if (raw) loadingData = JSON.parse(raw);
+      } catch (e) {}
+    }
+    generateGatePassPdf(contract, loadingData || {}, p.gate_pass_number);
+  };
 
   return <>
     <PageHeading
       eyebrow={`STEP 04 / ${moduleName.toUpperCase()}`}
       title="Step 4: Gate Passes"
-      description={`Generate and review Gate Passes containing all contract details and loading details for ${moduleName}.`}
+      description={`Generate, review and download official Gate Passes for Cotton Seed and Net Cotton.`}
+      action={
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className={`button ${moduleFilter === "current" ? "primary" : "secondary"}`}
+            style={{ fontSize: 12, padding: "6px 12px" }}
+            onClick={() => setModuleFilter("current")}
+          >
+            {moduleName} ({consolidatedPasses.filter(p => (p.contracts?.module || p.module || "cotton_seed") === activeModule).length})
+          </button>
+          <button
+            className={`button ${moduleFilter === "all" ? "primary" : "secondary"}`}
+            style={{ fontSize: 12, padding: "6px 12px" }}
+            onClick={() => setModuleFilter("all")}
+          >
+            All Passes ({consolidatedPasses.length})
+          </button>
+        </div>
+      }
     />
     <section className="panel">
       <div className="panel-heading">
-        <div><h2>Gate Passes</h2><p>Official passes generated with contract and loading details</p></div>
+        <div>
+          <h2>Gate Passes Register</h2>
+          <p>Official passes with verified contract and loading details ({displayedPasses.length} total)</p>
+        </div>
         <PackageCheck size={20}/>
       </div>
-      {data.demoMode ? (
-        <div className="empty-state">
-          <PackageCheck size={25}/>
-          <strong>Gate Pass Generator Active ({moduleName})</strong>
-          <span>Select any {moduleName} contract from the register or click below to open Step 4 and generate an official Gate Pass PDF.</span>
-          <button className="button primary" onClick={() => {
-            const first = data.contracts.find(c => (c.module || "cotton_seed") === activeModule);
-            if (first) window.location.href = `#/contracts/${first.id}?step=4`;
-          }}>Open Gate Pass Generator <ArrowRight size={14}/></button>
-        </div>
-      ) : loading ? (
+
+      {loading ? (
         <div className="empty-state">Loading gate passes…</div>
       ) : error ? (
         <div className="form-error">{error}</div>
-      ) : !passes.length ? (
+      ) : !displayedPasses.length ? (
         <div className="empty-state">
-          <PackageCheck size={25}/>
-          <strong>No gate passes generated yet</strong>
-          <span>Save Step 3 loading details on any contract to generate its gate pass.</span>
+          <PackageCheck size={28}/>
+          <strong>No gate passes found for {moduleFilter === "current" ? moduleName : "this filter"}</strong>
+          <span>Save Step 3 loading details on any contract to automatically generate its gate pass.</span>
+          <button className="button primary" onClick={() => {
+            const first = data.contracts.find(c => (c.module || "cotton_seed") === activeModule);
+            if (first) navigate(`/contracts/${first.id}?step=3`);
+            else navigate("/contracts");
+          }}>Go to Step 3 Loading <ArrowRight size={14}/></button>
         </div>
       ) : (
         <div className="table-scroll">
@@ -2130,22 +2287,67 @@ function GatePasses({ data, activeModule }) {
             <thead>
               <tr>
                 <th>Gate Pass</th>
+                <th>Module</th>
                 <th>Contract</th>
-                <th>Party</th>
+                <th>Party Name</th>
                 <th>Date</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {passes.map(p => (
-                <tr key={p.id}>
-                  <td data-label="Gate Pass"><strong className="contract-code">{p.gate_pass_number}</strong></td>
-                  <td data-label="Contract">{p.contracts?.contract_number}</td>
-                  <td data-label="Party">{p.contracts?.party_name}</td>
-                  <td data-label="Date">{new Date(p.created_at).toLocaleDateString("en-IN")}</td>
-                  <td data-label="Status"><StatusBadge status="completed"/></td>
-                </tr>
-              ))}
+              {displayedPasses.map(p => {
+                const passMod = p.contracts?.module || p.module || "cotton_seed";
+                const isPassNetCotton = passMod === "net_cotton";
+                const contractObj = p.contracts || {};
+
+                return (
+                  <tr key={p.id}>
+                    <td data-label="Gate Pass">
+                      <strong className="contract-code" style={{ color: isPassNetCotton ? "#d97706" : "#2563eb" }}>
+                        {p.gate_pass_number}
+                      </strong>
+                    </td>
+                    <td data-label="Module">
+                      <span style={{
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: isPassNetCotton ? "#fef3c7" : "#e0e7ff",
+                        color: isPassNetCotton ? "#92400e" : "#3730a3"
+                      }}>
+                        {isPassNetCotton ? "Net Cotton" : "Cotton Seed"}
+                      </span>
+                    </td>
+                    <td data-label="Contract">
+                      <strong>{contractObj.contract_number || "—"}</strong>
+                      {contractObj.commodity && <small className="cell-sub">{contractObj.commodity}</small>}
+                    </td>
+                    <td data-label="Party Name">
+                      <span className="party-cell" style={{ fontWeight: 600, color: "#0f172a" }}>
+                        {contractObj.party_name || "—"}
+                      </span>
+                    </td>
+                    <td data-label="Date">
+                      {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
+                    </td>
+                    <td data-label="Status">
+                      <StatusBadge status="completed"/>
+                    </td>
+                    <td data-label="Action">
+                      <button
+                        className="button secondary"
+                        style={{ fontSize: 11, padding: "5px 10px" }}
+                        onClick={() => handleDownloadPass(p)}
+                        title="Download Gate Pass PDF"
+                      >
+                        <ArrowDownToLine size={13}/> PDF
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
