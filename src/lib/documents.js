@@ -308,22 +308,32 @@ export function generateDailyPurchaseReportPdf(date, records) {
 
   // Header banner
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, w, 34, "F");
+  pdf.rect(0, 0, w, 36, "F");
+
+  // Logo badge & emblem
+  try {
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(12, 4.5, 30, 27, 2, 2, "F");
+    pdf.addImage(LOGO_BASE64, "PNG", 14, 6, 26, 23);
+  } catch (e) {
+    // Fallback
+  }
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(14);
-  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 14, 11);
-  pdf.setFontSize(8);
+  pdf.setFontSize(14.5);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 46, 12);
+  pdf.setFontSize(7.5);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(226, 232, 240);
-  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 14, 17);
-  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 14, 22.5);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 46, 18);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 46, 23.5);
   pdf.setTextColor(148, 163, 184);
-  pdf.text("COTTON DAILY PURCHASE SHEET", 14, 28.5);
-  pdf.text(`Date: ${date || new Date().toLocaleDateString("en-IN")}`, w - 45, 28.5);
+  pdf.setFontSize(7);
+  pdf.text("COTTON DAILY PURCHASE SHEET", 46, 29);
+  pdf.text(`Date: ${date || new Date().toLocaleDateString("en-IN")}`, w - 45, 29);
 
-  let y = 40;
+  let y = 42;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(9);
   pdf.setFillColor(241, 245, 249);
@@ -402,22 +412,32 @@ export function generateHeapWiseReportPdf(fromDate, toDate, heapList) {
 
   // Header banner
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, w, 34, "F");
+  pdf.rect(0, 0, w, 36, "F");
+
+  // Logo badge & emblem
+  try {
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(12, 4.5, 30, 27, 2, 2, "F");
+    pdf.addImage(LOGO_BASE64, "PNG", 14, 6, 26, 23);
+  } catch (e) {
+    // Fallback
+  }
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(14);
-  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 14, 11);
-  pdf.setFontSize(8);
+  pdf.setFontSize(14.5);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 46, 12);
+  pdf.setFontSize(7.5);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(226, 232, 240);
-  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 14, 17);
-  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 14, 22.5);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 46, 18);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 46, 23.5);
   pdf.setTextColor(148, 163, 184);
-  pdf.text("HEAP WISE AVERAGE DETAILS (BENCHMARK PROCUREMENT AUDIT)", 14, 28.5);
-  pdf.text(`Period: ${fromDate || "—"} to ${toDate || "—"}`, w - 75, 28.5);
+  pdf.setFontSize(7);
+  pdf.text("HEAP WISE AVERAGE DETAILS (BENCHMARK PROCUREMENT AUDIT)", 46, 29);
+  pdf.text(`Period: ${fromDate || "—"} to ${toDate || "—"}`, w - 75, 29);
 
-  let y = 40;
+  let y = 42;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(8.5);
   pdf.setFillColor(241, 245, 249);
@@ -499,21 +519,30 @@ export function generateTriplicateBillPdf(bill) {
   pdf.setFillColor(15, 23, 42);
   pdf.rect(0, 0, w, 36, "F");
 
+  // Logo badge & emblem
+  try {
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(12, 4.5, 30, 27, 2, 2, "F");
+    pdf.addImage(LOGO_BASE64, "PNG", 14, 6, 26, 23);
+  } catch (e) {
+    // Fallback
+  }
+
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14.5);
-  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 14, 11);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 46, 12);
 
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8.5);
+  pdf.setFontSize(7.5);
   pdf.setTextColor(226, 232, 240);
-  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 14, 17.5);
-  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 14, 23.5);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 46, 18);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 46, 23.5);
 
-  pdf.setFontSize(8);
+  pdf.setFontSize(7);
   pdf.setTextColor(148, 163, 184);
-  pdf.text(`FARMER COTTON PURCHASE BILL (${isDebit ? "DEBIT PURCHASE" : "CASH PURCHASE"})`, 14, 30.5);
-  pdf.text(`BILL NO: ${bill.bill_number || bill.bill_no || "DRAFT"}`, w - 50, 30.5);
+  pdf.text(`FARMER COTTON PURCHASE BILL (${isDebit ? "DEBIT PURCHASE" : "CASH PURCHASE"})`, 46, 29);
+  pdf.text(`BILL NO: ${bill.bill_number || bill.bill_no || "DRAFT"}`, w - 45, 29);
 
   // Section: Bill meta
   let y = 43;

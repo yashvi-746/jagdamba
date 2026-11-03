@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jagdamba-cotton-cache-v4';
+const CACHE_NAME = 'jagdamba-cotton-cache-v5';
 
 const STATIC_ASSETS = [
   '/',
