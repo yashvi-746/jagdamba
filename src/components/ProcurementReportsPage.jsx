@@ -281,7 +281,12 @@ export default function ProcurementReportsPage() {
                 <span className="brand-badge">HEAP ANALYTICS</span>
                 <div>
                   <h3>DAILY PURCHASE REPORT — HEAP WISE AVERAGE</h3>
-                  <p>SHREE JAGDAMBA COTTON G AND P FACTORY (HANDOD)</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#cbd5e1" }}>
+                    Shree Jagdamba Cotton Ginning & Pressing Factory • At Handod Ta sankheda Dist Chottaudepur-391145
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#94a3b8" }}>
+                    Email id :- jagdambavhm@gmail.com • GST number 24AAHFS2183D1ZF
+                  </p>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

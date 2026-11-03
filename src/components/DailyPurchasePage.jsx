@@ -258,8 +258,13 @@ export default function DailyPurchasePage() {
           <div className="brand-left">
             <span className="brand-badge">FACTORY DESK</span>
             <div>
-              <h3>SHREE JAGDAMBA COTTON G AND P FACTORY (HANDOD)</h3>
-              <p>YARD RAW COTTON PROCUREMENT & WEIGHBRIDGE RECORD</p>
+              <h3>Shree Jagdamba Cotton Ginning & Pressing Factory</h3>
+              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#cbd5e1" }}>
+                At Handod Ta sankheda Dist Chottaudepur-391145 • Email id :- jagdambavhm@gmail.com • GST number 24AAHFS2183D1ZF
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#94a3b8" }}>
+                YARD RAW COTTON PROCUREMENT & WEIGHBRIDGE RECORD
+              </p>
             </div>
           </div>
           <div className="brand-meta">

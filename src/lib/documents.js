@@ -305,18 +305,22 @@ export function generateDailyPurchaseReportPdf(date, records) {
 
   // Header banner
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, w, 28, "F");
+  pdf.rect(0, 0, w, 34, "F");
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
-  pdf.text("SHREE JAGDAMBA COTTON GINNING & PRESSING FACTORY", 14, 11);
-  pdf.setFontSize(8.5);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 14, 11);
+  pdf.setFontSize(8);
   pdf.setFont("helvetica", "normal");
-  pdf.text("HANDOD (HANDOD-POICHA ROAD) — COTTON DAILY PURCHASE SHEET", 14, 18);
-  pdf.text(`Date: ${date || new Date().toLocaleDateString("en-IN")}`, w - 45, 18);
+  pdf.setTextColor(226, 232, 240);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 14, 17);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 14, 22.5);
+  pdf.setTextColor(148, 163, 184);
+  pdf.text("COTTON DAILY PURCHASE SHEET", 14, 28.5);
+  pdf.text(`Date: ${date || new Date().toLocaleDateString("en-IN")}`, w - 45, 28.5);
 
-  let y = 36;
+  let y = 40;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(9);
   pdf.setFillColor(241, 245, 249);
@@ -395,18 +399,22 @@ export function generateHeapWiseReportPdf(fromDate, toDate, heapList) {
 
   // Header banner
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, w, 28, "F");
+  pdf.rect(0, 0, w, 34, "F");
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
-  pdf.text("SHREE JAGDAMBA COTTON GINNING & PRESSING FACTORY", 14, 11);
-  pdf.setFontSize(8.5);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 14, 11);
+  pdf.setFontSize(8);
   pdf.setFont("helvetica", "normal");
-  pdf.text("HEAP WISE AVERAGE DETAILS (BENCHMARK PROCUREMENT AUDIT)", 14, 18);
-  pdf.text(`Period: ${fromDate || "—"} to ${toDate || "—"}`, w - 75, 18);
+  pdf.setTextColor(226, 232, 240);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 14, 17);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 14, 22.5);
+  pdf.setTextColor(148, 163, 184);
+  pdf.text("HEAP WISE AVERAGE DETAILS (BENCHMARK PROCUREMENT AUDIT)", 14, 28.5);
+  pdf.text(`Period: ${fromDate || "—"} to ${toDate || "—"}`, w - 75, 28.5);
 
-  let y = 36;
+  let y = 40;
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(8.5);
   pdf.setFillColor(241, 245, 249);
