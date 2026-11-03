@@ -129,6 +129,9 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeModule, setActiveModule] = useState(() => localStorage.getItem("active_app_module") || "cotton_seed");
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlinePending, setOfflinePending] = useState(() => getOfflineQueue().length);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -149,23 +152,6 @@ export default function App() {
   }, [offlineMode]);
 
   useEffect(() => { if (session && !data.demoMode) data.refresh(); }, [session?.user?.id]);
-
-  const signOut = async () => {
-    if (supabase) await supabase.auth.signOut();
-    localStorage.removeItem("seedledger_offline_mode");
-    setOfflineMode(false);
-    setSession(null);
-  };
-
-  if (!authChecked) return <div className="boot-screen"><div className="app-logo-badge"><img src="/logo.svg" alt="Logo" className="app-logo-img" style={{ width: 60 }}/></div><span>Loading Shree Jagdamba System…</span></div>;
-  if (isSupabaseConfigured && !session && !offlineMode) return <Login onLogin={setSession} onOffline={() => {
-    setOfflineMode(true);
-    localStorage.setItem("seedledger_offline_mode", "true");
-  }} />;
-
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [offlinePending, setOfflinePending] = useState(() => getOfflineQueue().length);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -198,6 +184,19 @@ export default function App() {
       setIsSyncing(false);
     }
   };
+
+  const signOut = async () => {
+    if (supabase) await supabase.auth.signOut();
+    localStorage.removeItem("seedledger_offline_mode");
+    setOfflineMode(false);
+    setSession(null);
+  };
+
+  if (!authChecked) return <div className="boot-screen"><div className="app-logo-badge"><img src="/logo.svg" alt="Logo" className="app-logo-img" style={{ width: 60 }}/></div><span>Loading Shree Jagdamba System…</span></div>;
+  if (isSupabaseConfigured && !session && !offlineMode) return <Login onLogin={setSession} onOffline={() => {
+    setOfflineMode(true);
+    localStorage.setItem("seedledger_offline_mode", "true");
+  }} />;
 
   const moduleName = activeModule === "net_cotton" ? "Net Cotton" : "Cotton Seed";
   const commodityName = activeModule === "net_cotton" ? "COTTON BALES" : "COTTON SEED";
