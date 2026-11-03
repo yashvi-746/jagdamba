@@ -484,25 +484,28 @@ export function generateTriplicateBillPdf(bill) {
   const w = pdf.internal.pageSize.getWidth();
   const isDebit = (bill.bill_type || bill.payment_mode || "").toLowerCase() === "debit";
 
-  // Factory Header
+  // Factory Header Banner
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, w, 32, "F");
+  pdf.rect(0, 0, w, 36, "F");
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(15);
-  pdf.text("SHREE JAGDAMBA COTTON GINNING & PRESSING FACTORY", 14, 13);
+  pdf.setFontSize(14.5);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 14, 11);
 
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8.5);
-  pdf.text("HANDOD (HANDOD-POICHA ROAD) TAL: SHINOR, DIST: VADODARA, GUJARAT", 14, 20);
+  pdf.setTextColor(226, 232, 240);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 14, 17.5);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 14, 23.5);
+
   pdf.setFontSize(8);
-  pdf.setTextColor(203, 213, 225);
-  pdf.text(`FARMER COTTON PURCHASE BILL (${isDebit ? "DEBIT PURCHASE" : "CASH PURCHASE"})`, 14, 27);
-  pdf.text(`BILL NO: ${bill.bill_number || bill.bill_no || "DRAFT"}`, w - 50, 27);
+  pdf.setTextColor(148, 163, 184);
+  pdf.text(`FARMER COTTON PURCHASE BILL (${isDebit ? "DEBIT PURCHASE" : "CASH PURCHASE"})`, 14, 30.5);
+  pdf.text(`BILL NO: ${bill.bill_number || bill.bill_no || "DRAFT"}`, w - 50, 30.5);
 
   // Section: Bill meta
-  let y = 42;
+  let y = 43;
   pdf.setFillColor(241, 245, 249);
   pdf.rect(14, y, w - 28, 24, "F");
 
