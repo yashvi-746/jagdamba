@@ -31,40 +31,43 @@ function basePdf(title, subtitle, contract) {
 
   // Header navy bar
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, w, 32, "F");
+  pdf.rect(0, 0, w, 36, "F");
 
   // Logo badge & emblem
   try {
     pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(12, 4, 30, 24, 2, 2, "F");
-    pdf.addImage(LOGO_BASE64, "PNG", 14, 5.5, 26, 21);
+    pdf.roundedRect(12, 4.5, 30, 27, 2, 2, "F");
+    pdf.addImage(LOGO_BASE64, "PNG", 14, 6, 26, 23);
   } catch (e) {
     // Fallback
   }
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(16);
-  pdf.text("SHREE JAGDAMBA", 48, 14);
+  pdf.setFontSize(14.5);
+  pdf.text("SHREE JAGDAMBA", 46, 12);
 
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8.5);
-  pdf.text(subtitle, 48, 20);
-
   pdf.setFontSize(7.5);
-  pdf.setTextColor(203, 213, 225);
-  pdf.text("CONTRACT CONFIRMATION & GATE PASS SYSTEM", 48, 25);
+  pdf.setTextColor(226, 232, 240);
+  pdf.text("Shree Jagdamba Cotton Ginning & Pressing Factory", 46, 17);
+  pdf.text("At Handod Ta sankheda Dist Chottaudepur-391145", 46, 21.5);
+  pdf.text("Email id :- jagdambavhm@gmail.com  |  GST number 24AAHFS2183D1ZF", 46, 26);
+
+  pdf.setFontSize(7);
+  pdf.setTextColor(148, 163, 184);
+  pdf.text(`${subtitle} • CONTRACT CONFIRMATION & GATE PASS SYSTEM`, 46, 31);
 
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12.5);
+  pdf.setFontSize(11);
   pdf.setTextColor(255, 255, 255);
-  pdf.text(title, w - 15, 18, { align: "right" });
+  pdf.text(title, w - 12, 17, { align: "right" });
 
   pdf.setTextColor(30, 41, 59);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(9.5);
-  pdf.text(`1. DATE: ${safe(contract.contract_date)}`, 15, 40);
-  pdf.text(`2. CONTRACT NUMBER: ${safe(contract.contract_number)}`, w - 15, 40, { align: "right" });
+  pdf.text(`1. DATE: ${safe(contract.contract_date)}`, 15, 43);
+  pdf.text(`2. CONTRACT NUMBER: ${safe(contract.contract_number)}`, w - 15, 43, { align: "right" });
 
   return pdf;
 }
@@ -99,7 +102,7 @@ export function generateContractPdf(c, { returnBlob = false } = {}) {
   const title = isNetCotton ? "NET COTTON CONFIRMATION" : "COTTON SEED CONFIRMATION";
   const subtitle = isNetCotton ? "NET COTTON (COTTON BALES)" : "COTTON SEED";
   const pdf = basePdf(title, subtitle, c);
-  let y = 46;
+  let y = 50;
 
   let items = [];
   if (isNetCotton) {
@@ -209,7 +212,7 @@ export function generateGatePassPdf(c, l, number, { returnBlob = false } = {}) {
   const title = "GATE PASS";
   const subtitle = isNetCotton ? "NET COTTON (COTTON BALES)" : "COTTON SEED";
   const pdf = basePdf(title, subtitle, c);
-  let y = 46;
+  let y = 50;
 
   // Step 1: Contract Details as per contract
   let contractRows = [];
