@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 :root {
-  --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
   /* Premium Deep Slate Palette */
   --navy-950: #090e17;
@@ -32,13 +33,13 @@
   --text-muted: #64748b;
   --text-light: #94a3b8;
 
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 12px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
   --radius-full: 9999px;
 }
 
@@ -649,36 +650,39 @@ button:disabled {
 }
 
 .data-table th {
-  background: #f8fafc;
-  border-bottom: 1px solid var(--border-light);
-  padding: 14px 24px;
-  color: var(--navy-600);
+  background: #f1f5f9;
+  border-bottom: 1.5px solid var(--border-light);
+  padding: 12px 18px;
+  color: #475569;
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.6px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
 .data-table td {
-  padding: 18px 24px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 13px;
   color: var(--navy-700);
-  transition: background 0.12s ease;
+  transition: all 0.12s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tbody tr:nth-child(even) td {
+  background: #fcfdfe;
 }
 
 .data-table tbody tr:hover td {
-  background: #f8fafc;
-}
-
-.clickable-row {
-  cursor: pointer;
+  background: #f1f5f9;
 }
 
 .contract-code {
+  font-family: var(--font-mono);
   color: var(--navy-950);
   font-weight: 700;
-  font-size: 13.5px;
+  font-size: 13px;
+  letter-spacing: -0.2px;
 }
 
 .cell-sub {
