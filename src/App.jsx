@@ -164,6 +164,7 @@ export default function App() {
   const [offlinePending, setOfflinePending] = useState(() => getOfflineQueue().length);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     globalToastHandler = (newToast) => {
@@ -269,8 +270,6 @@ export default function App() {
     "/triplicate-billing": "Triplicate Billing (Cash & Debit)",
     "/procurement-reports": "Procurement & Heap Reports"
   })[location.pathname] || "Workspace";
-
-  const [fabOpen, setFabOpen] = useState(false);
 
   return (
     <div className={`app-shell module-${activeModule}`}>
