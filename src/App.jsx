@@ -924,7 +924,7 @@ function ContractRegister({ data, activeModule }) {
         <Search size={16}/>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${moduleName} contracts…`}/>
       </div>
-      <div className="filter-pills">
+      <div className="filter-pills contract-status-filters">
         {["all", "draft", "confirmed", "loading", "completed"].map(s => (
           <button key={s} className={`filter-pill ${filter === s ? "active" : ""}`} onClick={() => setFilter(s)}>
             {s.charAt(0).toUpperCase() + s.slice(1)}

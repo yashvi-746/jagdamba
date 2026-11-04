@@ -475,7 +475,7 @@ export default function TriplicateBillingPage() {
                   onChange={(e) => handleSelectFarmer(e.target.value)}
                   style={{ width: "100%", height: 42, borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border-light)", padding: "0 14px", fontSize: "var(--font-size-body)", color: "var(--navy-950)", background: "#ffffff" }}
                 >
-                  <option value="">-- Or enter new farmer profile below --</option>
+                  <option value="">Add new farmer profile</option>
                   {farmers.map(f => (
                     <option key={f.id} value={f.id}>
                       {f.farmer_name} — {f.village} {f.vehicle_number ? `(${f.vehicle_number})` : ""}
