@@ -300,69 +300,64 @@ export default function App() {
         </button>
       </div>
       {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Close menu" />}
-      <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`} style={{ overflowY: "auto" }}>
+      <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="app-logo-badge"><img src="/logo.svg" alt="Shree Jagdamba" className="app-logo-img"/></div>
           <div><strong>Shree Jagdamba</strong><span>{commodityName}</span></div>
           <button className="icon-button sidebar-close" onClick={() => setMobileOpen(false)}><X size={18}/></button>
         </div>
 
-        {/* Module Switcher Tab */}
-        <div style={{ padding: "0 10px 16px" }}>
-          <div style={{ background: "rgba(255, 255, 255, 0.08)", padding: 4, borderRadius: 10, display: "flex", gap: 4 }}>
-            <button
-              onClick={() => switchModule("cotton_seed")}
-              style={{
-                flex: 1, padding: "7px 6px", fontSize: 11, fontWeight: 700, border: 0, borderRadius: 7, cursor: "pointer",
-                background: activeModule === "cotton_seed" ? "#ffffff" : "transparent",
-                color: activeModule === "cotton_seed" ? "#0f172a" : "#94a3b8"
-              }}
-            >
-              Module 1: Seed
-            </button>
-            <button
-              onClick={() => switchModule("net_cotton")}
-              style={{
-                flex: 1, padding: "7px 6px", fontSize: 11, fontWeight: 700, border: 0, borderRadius: 7, cursor: "pointer",
-                background: activeModule === "net_cotton" ? "#ffffff" : "transparent",
-                color: activeModule === "net_cotton" ? "#0f172a" : "#94a3b8"
-              }}
-            >
-              Module 2: Net Cotton
-            </button>
+        {/* Scrollable Middle Navigation Section */}
+        <div className="sidebar-nav-scroll">
+          {/* Module Switcher Tab */}
+          <div className="sidebar-module-switch-wrap">
+            <div className="sidebar-module-switch">
+              <button
+                onClick={() => switchModule("cotton_seed")}
+                className={`sidebar-module-btn ${activeModule === "cotton_seed" ? "active" : ""}`}
+              >
+                Module 1: Seed
+              </button>
+              <button
+                onClick={() => switchModule("net_cotton")}
+                className={`sidebar-module-btn ${activeModule === "net_cotton" ? "active" : ""}`}
+              >
+                Module 2: Net Cotton
+              </button>
+            </div>
           </div>
+
+          <div className="workspace-label">{moduleName.toUpperCase()} WORKFLOW</div>
+          <nav className="nav-list">
+            <NavItem to="/" icon={<LayoutDashboard size={18}/>} label="Overview" onClick={() => setMobileOpen(false)} />
+            <NavItem to="/contracts" icon={<FileText size={18}/>} label="Contract Register" count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule).length} onClick={() => setMobileOpen(false)} />
+            <NavItem to="/contracts/new" icon={<FilePlus2 size={18}/>} label="Step 1: New Contract" onClick={() => setMobileOpen(false)} />
+            <NavItem
+              to="/confirmations"
+              icon={<Send size={18}/>}
+              label="Step 2: Send to Buyer"
+              count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule && c.status === "confirmed").length || null}
+              onClick={() => setMobileOpen(false)}
+            />
+            <NavItem
+              to="/loading"
+              icon={<Truck size={18}/>}
+              label="Step 3: Loading"
+              count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule && (c.status === "partially_dispatched" || c.status === "pending" || c.status === "loading")).length || null}
+              onClick={() => setMobileOpen(false)}
+            />
+            <NavItem to="/gate-passes" icon={<PackageCheck size={18}/>} label="Step 4: Gate Passes" onClick={() => setMobileOpen(false)} />
+            <NavItem to="/parties" icon={<Users size={18}/>} label="Parties" onClick={() => setMobileOpen(false)} />
+          </nav>
+
+          {/* MAKE DIFFER SECTION: FARMER PROCUREMENT */}
+          <div className="workspace-label procurement-heading">FARMER PROCUREMENT</div>
+          <nav className="nav-list">
+            <NavItem to="/daily-purchase" icon={<Scale size={18}/>} label="Daily Purchase" onClick={() => setMobileOpen(false)} />
+            <NavItem to="/triplicate-billing" icon={<Receipt size={18}/>} label="Triplicate Billing" onClick={() => setMobileOpen(false)} />
+            <NavItem to="/procurement-reports" icon={<BarChart3 size={18}/>} label="Heap & Cash Reports" onClick={() => setMobileOpen(false)} />
+          </nav>
         </div>
-
-        <div className="workspace-label">{moduleName.toUpperCase()} WORKFLOW</div>
-        <nav className="nav-list">
-          <NavItem to="/" icon={<LayoutDashboard size={18}/>} label="Overview" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/contracts" icon={<FileText size={18}/>} label="Contract Register" count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule).length} onClick={() => setMobileOpen(false)} />
-          <NavItem to="/contracts/new" icon={<FilePlus2 size={18}/>} label="Step 1: New Contract" onClick={() => setMobileOpen(false)} />
-          <NavItem
-            to="/confirmations"
-            icon={<Send size={18}/>}
-            label="Step 2: Send to Buyer"
-            count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule && c.status === "confirmed").length || null}
-            onClick={() => setMobileOpen(false)}
-          />
-          <NavItem
-            to="/loading"
-            icon={<Truck size={18}/>}
-            label="Step 3: Loading"
-            count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule && (c.status === "partially_dispatched" || c.status === "pending" || c.status === "loading")).length || null}
-            onClick={() => setMobileOpen(false)}
-          />
-          <NavItem to="/gate-passes" icon={<PackageCheck size={18}/>} label="Step 4: Gate Passes" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/parties" icon={<Users size={18}/>} label="Parties" onClick={() => setMobileOpen(false)} />
-        </nav>
-
-        {/* MAKE DIFFER SECTION: FARMER PROCUREMENT */}
-        <div className="workspace-label" style={{ marginTop: 20, color: "#38bdf8" }}>FARMER PROCUREMENT</div>
-        <nav className="nav-list">
-          <NavItem to="/daily-purchase" icon={<Scale size={18}/>} label="Daily Purchase" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/triplicate-billing" icon={<Receipt size={18}/>} label="Triplicate Billing" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/procurement-reports" icon={<BarChart3 size={18}/>} label="Heap & Cash Reports" onClick={() => setMobileOpen(false)} />
-        </nav>
 
         <div className="sidebar-bottom">
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>

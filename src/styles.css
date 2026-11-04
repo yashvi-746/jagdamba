@@ -119,32 +119,34 @@ button:disabled {
   inset: 0 auto 0 0;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 20px;
+  padding: 16px 14px 14px;
   z-index: 30;
   border-right: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease;
+  overflow: hidden;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 8px 22px;
+  gap: 10px;
+  padding: 0 4px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 18px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .app-logo-badge {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-md);
   background: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.2);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  padding: 4px;
+  padding: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -158,18 +160,79 @@ button:disabled {
   display: block;
   font-family: var(--font-heading);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.3px;
+  line-height: 1.2;
 }
 
 .brand span {
   display: block;
-  font-size: 9.5px;
-  letter-spacing: 1.6px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
   color: #93c5fd;
   font-weight: 700;
-  margin-top: 3px;
+  margin-top: 2px;
+}
+
+/* Sidebar Middle Scrollable Container */
+.sidebar-nav-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+  margin-right: -2px;
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+
+.sidebar-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Module Switcher Styles */
+.sidebar-module-switch-wrap {
+  padding: 0 2px 10px;
+}
+
+.sidebar-module-switch {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px;
+  border-radius: 9px;
+  display: flex;
+  gap: 3px;
+}
+
+.sidebar-module-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sidebar-module-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .workspace-label {
@@ -177,26 +240,31 @@ button:disabled {
   letter-spacing: 0.8px;
   font-weight: 700;
   color: #94a3b8;
-  padding: 0 12px 8px;
+  padding: 0 10px 6px;
   text-transform: uppercase;
+}
+
+.procurement-heading {
+  margin-top: 14px;
+  color: #38bdf8 !important;
 }
 
 .nav-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .nav-item {
-  height: 40px;
+  height: 36px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
+  gap: 10px;
+  padding: 0 10px;
   text-decoration: none;
   color: #cbd5e1;
-  font-size: var(--font-size-data);
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.15s ease;
 }
@@ -207,7 +275,7 @@ button:disabled {
 }
 
 .nav-item.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
   border-left: 3px solid var(--theme-accent, #3b82f6);
   font-weight: 600;
@@ -216,34 +284,36 @@ button:disabled {
 .nav-icon {
   display: flex;
   color: inherit;
+  flex-shrink: 0;
 }
 
 .nav-count {
   margin-left: auto;
   background: rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-full);
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 1px 7px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #e2e8f0;
 }
 
 .sidebar-bottom {
+  flex-shrink: 0;
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .secure-card {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   color: #38bdf8;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .secure-card strong {
@@ -262,7 +332,65 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px;
+  padding: 2px 4px;
+}
+
+/* Compact Sidebar Media Query for Laptops & Shorter Viewports */
+@media (max-height: 820px) {
+  .sidebar {
+    padding: 12px 10px 10px;
+  }
+  .brand {
+    padding: 0 2px 8px;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .app-logo-badge {
+    width: 34px;
+    height: 34px;
+  }
+  .brand strong {
+    font-size: 14px;
+  }
+  .sidebar-module-switch-wrap {
+    padding: 0 0 8px;
+  }
+  .sidebar-module-btn {
+    padding: 5px 3px;
+    font-size: 10px;
+  }
+  .workspace-label {
+    padding: 0 8px 4px;
+    font-size: 10px;
+  }
+  .procurement-heading {
+    margin-top: 10px;
+  }
+  .nav-item {
+    height: 33px;
+    font-size: 12.5px;
+    padding: 0 8px;
+    gap: 8px;
+  }
+  .sidebar-bottom {
+    padding-top: 8px;
+  }
+  .secure-card {
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    gap: 7px;
+  }
+  .secure-card strong {
+    font-size: 10.5px;
+  }
+  .secure-card span {
+    font-size: 9.5px;
+  }
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 10px;
+  }
 }
 
 .avatar, .top-avatar {
