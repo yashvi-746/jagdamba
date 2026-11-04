@@ -741,6 +741,8 @@ function ContractRegister({ data, activeModule }) {
   const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const navigate = useNavigate();
 
   const filtered = useMemo(() => {
@@ -756,6 +758,17 @@ function ContractRegister({ data, activeModule }) {
         return matchFilter && matchSearch;
       });
   }, [data.contracts, activeModule, filter, search]);
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search, activeModule]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedContracts = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return filtered.slice(startIndex, startIndex + pageSize);
+  }, [filtered, page, pageSize]);
 
   return <>
     <PageHeading
@@ -781,7 +794,47 @@ function ContractRegister({ data, activeModule }) {
 
     <section className="panel">
       {filtered.length ? (
-        <ContractTable contracts={filtered} onOpen={id => navigate(`/contracts/${id}`)} isNetCotton={isNetCotton}/>
+        <>
+          <ContractTable contracts={paginatedContracts} onOpen={id => navigate(`/contracts/${id}`)} isNetCotton={isNetCotton}/>
+          {filtered.length > 10 && (
+            <div className="pagination-bar">
+              <div className="pagination-info">
+                Showing <strong>{((page - 1) * pageSize) + 1}</strong> - <strong>{Math.min(page * pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> contracts
+              </div>
+              <div className="pagination-controls">
+                <select 
+                  className="pagination-size-select" 
+                  value={pageSize} 
+                  onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+                <button 
+                  type="button" 
+                  className="pagination-btn" 
+                  disabled={page <= 1} 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  ◀ Prev
+                </button>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: "0 6px" }}>
+                  Page {page} of {totalPages}
+                </span>
+                <button 
+                  type="button" 
+                  className="pagination-btn" 
+                  disabled={page >= totalPages} 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                >
+                  Next ▶
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="empty-state">
           <FileText size={28}/>
@@ -2542,6 +2595,8 @@ function GatePasses({ data, activeModule }) {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("all"); // "all" | "today"
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -2637,6 +2692,17 @@ function GatePasses({ data, activeModule }) {
       return passNum.includes(q) || party.includes(q) || contractNum.includes(q) || truck.includes(q) || transporter.includes(q) || lr.includes(q) || pr.includes(q) || lot.includes(q);
     });
   }, [supabasePasses, activeModule, searchTerm, dateFilter]);
+
+  // Reset pagination on search or date filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, dateFilter, activeModule]);
+
+  const totalPages = Math.ceil(displayedPasses.length / pageSize) || 1;
+  const paginatedPasses = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return displayedPasses.slice(startIndex, startIndex + pageSize);
+  }, [displayedPasses, page, pageSize]);
 
   const handleDownloadPass = (p) => {
     const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
@@ -2760,7 +2826,7 @@ function GatePasses({ data, activeModule }) {
               </tr>
             </thead>
             <tbody>
-              {displayedPasses.map(p => {
+              {paginatedPasses.map(p => {
                 const contractObj = p.contracts || {};
                 const loadingObj = p.loading_details || {};
 
@@ -2829,6 +2895,45 @@ function GatePasses({ data, activeModule }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {displayedPasses.length > 10 && (
+        <div className="pagination-bar">
+          <div className="pagination-info">
+            Showing <strong>{((page - 1) * pageSize) + 1}</strong> - <strong>{Math.min(page * pageSize, displayedPasses.length)}</strong> of <strong>{displayedPasses.length}</strong> gate passes
+          </div>
+          <div className="pagination-controls">
+            <select 
+              className="pagination-size-select" 
+              value={pageSize} 
+              onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+            >
+              <option value={10}>10 / page</option>
+              <option value={25}>25 / page</option>
+              <option value={50}>50 / page</option>
+              <option value={100}>100 / page</option>
+            </select>
+            <button 
+              type="button" 
+              className="pagination-btn" 
+              disabled={page <= 1} 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+            >
+              ◀ Prev
+            </button>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: "0 6px" }}>
+              Page {page} of {totalPages}
+            </span>
+            <button 
+              type="button" 
+              className="pagination-btn" 
+              disabled={page >= totalPages} 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            >
+              Next ▶
+            </button>
+          </div>
         </div>
       )}
     </section>
@@ -3052,6 +3157,45 @@ function PartiesPage({ data, activeModule }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {displayedPasses.length > 10 && (
+        <div className="pagination-bar">
+          <div className="pagination-info">
+            Showing <strong>{((page - 1) * pageSize) + 1}</strong> - <strong>{Math.min(page * pageSize, displayedPasses.length)}</strong> of <strong>{displayedPasses.length}</strong> gate passes
+          </div>
+          <div className="pagination-controls">
+            <select 
+              className="pagination-size-select" 
+              value={pageSize} 
+              onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+            >
+              <option value={10}>10 / page</option>
+              <option value={25}>25 / page</option>
+              <option value={50}>50 / page</option>
+              <option value={100}>100 / page</option>
+            </select>
+            <button 
+              type="button" 
+              className="pagination-btn" 
+              disabled={page <= 1} 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+            >
+              ◀ Prev
+            </button>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: "0 6px" }}>
+              Page {page} of {totalPages}
+            </span>
+            <button 
+              type="button" 
+              className="pagination-btn" 
+              disabled={page >= totalPages} 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            >
+              Next ▶
+            </button>
+          </div>
         </div>
       )}
     </section>
