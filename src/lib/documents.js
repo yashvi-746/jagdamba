@@ -246,11 +246,23 @@ export function generateGatePassPdf(c, l, number, { returnBlob = false } = {}) {
 
   // Step 3: Loading details as per contract
   let loadingRows = [];
+  const currentNetWt = Number(l.net_weight_quintals) || 0;
+  const contractedQtyMatch = String(c.quantity || "").match(/[\d.]+/);
+  const contractedQtyNum = contractedQtyMatch ? parseFloat(contractedQtyMatch[0]) : 0;
+  const previousDispatched = Number(l.total_dispatched_prior) || 0;
+  const totalWithCurrent = previousDispatched + currentNetWt;
+  const remainingBalance = contractedQtyNum > 0 ? Math.max(0, contractedQtyNum - totalWithCurrent) : 0;
+
   if (isNetCotton) {
-    // Module 2: Exact 7 loading fields from NET COTTON PDF
+    // Module 2: Exact 7 loading fields from NET COTTON PDF + Balance Context
     loadingRows = [
       ["1. Truck /tempo number", l.vehicle_number],
-      ["2. Net Weight quintals", `${safe(l.net_weight_quintals)} Quintals`],
+      ["2. Net Weight quintals (This Truck)", `${safe(l.net_weight_quintals)} Quintals`],
+      ...(contractedQtyNum > 0 ? [
+        ["Total Contract Quantity", `${contractedQtyNum.toFixed(2)} ${c.commodity === 'COTTON BALES' ? 'Bales/Qtl' : 'Quintals'}`],
+        ["Dispatched Including This Truck", `${totalWithCurrent.toFixed(2)} Quintals`],
+        ["Remaining Contract Balance", `${remainingBalance.toFixed(2)} Quintals`]
+      ] : []),
       ["3. Driver license no.", l.driver_license_number],
       ["4. Driver contact number", l.driver_contact_number],
       ["5. Transport no.", l.transport_number],
@@ -258,10 +270,15 @@ export function generateGatePassPdf(c, l, number, { returnBlob = false } = {}) {
       ["7. LR no.", l.lr_number]
     ];
   } else {
-    // Module 1: Exact 6 loading fields from COTTON SEED PDF
+    // Module 1: Exact 6 loading fields from COTTON SEED PDF + Balance Context
     loadingRows = [
       ["1. Truck /tempo number", l.vehicle_number],
-      ["2. Net Weight quintals", `${safe(l.net_weight_quintals)} Quintals`],
+      ["2. Net Weight quintals (This Truck)", `${safe(l.net_weight_quintals)} Quintals`],
+      ...(contractedQtyNum > 0 ? [
+        ["Total Contract Quantity", `${contractedQtyNum.toFixed(2)} Quintals`],
+        ["Dispatched Including This Truck", `${totalWithCurrent.toFixed(2)} Quintals`],
+        ["Remaining Contract Balance", `${remainingBalance.toFixed(2)} Quintals`]
+      ] : []),
       ["3. Driver license no.", l.driver_license_number],
       ["4. Transport no.", l.transport_number],
       ["5. Transport name", l.transport_name],

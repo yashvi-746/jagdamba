@@ -1545,10 +1545,34 @@ function ContractDetail({ data }) {
 
   const [loading, setLoading] = useState(blankLoadingDetails);
   const [message, setMessage] = useState("");
+  const [contractDispatches, setContractDispatches] = useState([]);
 
   const searchParams = new URLSearchParams(location.search);
   const initialStep = Number(searchParams.get("step")) || 1;
   const [currentStep, setCurrentStep] = useState(initialStep);
+
+  // Parse contract total quantity
+  const rawQtyMatch = String(contract?.quantity || "").match(/[\d.]+/);
+  const contractTotalQty = rawQtyMatch ? parseFloat(rawQtyMatch[0]) : 0;
+
+  // Retrieve all dispatches logged specifically for this contract
+  const loadDispatches = () => {
+    if (!contract) return;
+    try {
+      const all = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]");
+      const matched = all.filter(p => String(p.contract_id) === String(contract.id));
+      setContractDispatches(matched);
+    } catch (e) {
+      setContractDispatches([]);
+    }
+  };
+
+  useEffect(() => {
+    loadDispatches();
+  }, [contract?.id]);
+
+  const totalDispatchedSoFar = contractDispatches.reduce((sum, p) => sum + (Number(p.loading_details?.net_weight_quintals) || 0), 0);
+  const remainingBalanceQty = contractTotalQty > 0 ? Math.max(0, contractTotalQty - totalDispatchedSoFar) : 0;
 
   // Rapid Keyboard Mode refs for Loading Details
   const loadingRefs = useRef({});
@@ -1573,20 +1597,6 @@ function ContractDetail({ data }) {
     setCurrentStep(s);
   }, [location.search]);
 
-  useEffect(() => {
-    if (!contract) return;
-    if (data.demoMode) {
-      const saved = localStorage.getItem("seedledger_loading_" + contract.id);
-      if (saved) {
-        try { setLoading(JSON.parse(saved)); } catch (e) {}
-      }
-      return;
-    }
-    supabase.from("loading_details").select("*").eq("contract_id", contract.id).limit(1).maybeSingle().then(({ data: row }) => {
-      if (row) setLoading(row);
-    });
-  }, [contract?.id, data.demoMode]);
-
   if (!contract) {
     return <div className="panel empty-state"><strong>Contract not found</strong><button className="button primary" onClick={() => navigate("/contracts")}>Back to Register</button></div>;
   }
@@ -1596,49 +1606,37 @@ function ContractDetail({ data }) {
     navigate(`/contracts/${contract.id}?step=${s}`, { replace: true });
   };
 
-  // Step 3: Save Loading Details (6 fields for Cotton Seed; 7 fields for Net Cotton)
-  async function saveLoading(e) {
-    if (e) e.preventDefault();
-    setMessage("");
-
-    if (data.demoMode || String(contract.id).startsWith("local-") || String(contract.id).startsWith("offline-")) {
-      localStorage.setItem("seedledger_loading_" + contract.id, JSON.stringify(loading));
-      data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "loading" } : c));
-      setMessage("Step 3: Loading details saved successfully.");
-      return;
-    }
-
-    const user = (await supabase.auth.getUser()).data.user;
-    const payload = {
-      ...loading,
-      contract_id: contract.id,
-      created_by: user?.id,
-      net_weight_quintals: Number(loading.net_weight_quintals)
-    };
-    const { error } = await supabase.from("loading_details").upsert(payload, { onConflict: "contract_id" });
-    if (error) {
-      console.warn("Saving loading details locally due to:", error.message);
-      localStorage.setItem("seedledger_loading_" + contract.id, JSON.stringify(loading));
-      data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "loading" } : c));
-      setMessage("Step 3: Loading details saved successfully.");
-      return;
-    }
-    await supabase.from("contracts").update({ status: "loading" }).eq("id", contract.id);
-    setMessage("Step 3: Loading details saved.");
-    data.refresh();
-  }
-
-  // Step 4: Generate Gate Pass with all details
+  // Step 3 / 4: Save Truck Loading & Generate Gate Pass Immediately
   async function makeGatePass() {
     if (!loading.vehicle_number || !loading.net_weight_quintals || !loading.transport_name || !loading.lr_number) {
-      setMessage("Please fill and save all Step 3 loading details before generating Gate Pass.");
+      setMessage("Please fill all dispatch fields (Vehicle No, Net Weight, Transporter Name, and LR No).");
       return;
     }
+
+    const currentTruckWt = Number(loading.net_weight_quintals);
+    if (currentTruckWt <= 0) {
+      setMessage("Please enter a valid Net Weight in Quintals.");
+      return;
+    }
+
+    const newTotalDispatched = totalDispatchedSoFar + currentTruckWt;
+    const newRemaining = contractTotalQty > 0 ? Math.max(0, contractTotalQty - newTotalDispatched) : 0;
+    const isFullyCompleted = contractTotalQty > 0 ? newRemaining <= 0.01 : true;
+    const newContractStatus = isFullyCompleted ? "completed" : "partially_dispatched";
 
     const prefix = isNetCotton ? "GP-NC" : "GP-CS";
     const gateNum = `${prefix}-2026-` + Math.floor(1000 + Math.random() * 9000);
 
-    const gatePassRecord = {
+    const loadingPayload = {
+      ...loading,
+      contract_id: contract.id,
+      net_weight_quintals: currentTruckWt,
+      total_dispatched_prior: totalDispatchedSoFar,
+      remaining_balance_after: newRemaining,
+      created_at: new Date().toISOString()
+    };
+
+    const newGatePassRecord = {
       id: "gp-" + Date.now(),
       gate_pass_number: gateNum,
       contract_id: contract.id,
@@ -1649,49 +1647,75 @@ function ContractDetail({ data }) {
         contract_number: contract.contract_number,
         party_name: contract.party_name,
         commodity: contract.commodity || (isNetCotton ? "COTTON BALES" : "COTTON SEED"),
-        module: contract.module || (isNetCotton ? "net_cotton" : "cotton_seed")
+        module: contract.module || (isNetCotton ? "net_cotton" : "cotton_seed"),
+        quantity: contract.quantity
       },
-      loading_details: loading
+      loading_details: loadingPayload
     };
 
-    // Store in local gate passes storage for immediate availability across the app
+    // 1. Save permanently in localStorage (seedledger_gate_passes_v4)
     try {
-      const existing = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
-      const updated = [gatePassRecord, ...existing.filter(g => g.contract_id !== contract.id && g.gate_pass_number !== gateNum)];
-      localStorage.setItem("seedledger_gate_passes_v3", JSON.stringify(updated));
+      const allPasses = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]");
+      const updated = [newGatePassRecord, ...allPasses.filter(p => p.gate_pass_number !== gateNum)];
+      localStorage.setItem("seedledger_gate_passes_v4", JSON.stringify(updated));
     } catch (e) {}
 
-    if (data.demoMode || String(contract.id).startsWith("local-") || String(contract.id).startsWith("offline-")) {
-      generateGatePassPdf(contract, loading, gateNum);
-      data.setContracts(old => old.map(c => c.id === contract.id ? { ...c, status: "completed" } : c));
-      setMessage(`Step 4: Gate Pass ${gateNum} generated and downloaded with all details!`);
-      return;
+    // 2. Update contract in application state
+    data.setContracts(old => old.map(c => {
+      if (String(c.id) === String(contract.id)) {
+        return {
+          ...c,
+          status: newContractStatus,
+          dispatched_quantity: newTotalDispatched,
+          remaining_quantity: newRemaining
+        };
+      }
+      return c;
+    }));
+
+    // 3. Sync to Supabase in background
+    if (isSupabaseConfigured && !data.demoMode) {
+      try {
+        const user = (await supabase.auth.getUser()).data.user;
+        const { data: dbLoading } = await supabase.from("loading_details").insert({
+          contract_id: contract.id,
+          vehicle_number: loading.vehicle_number,
+          net_weight_quintals: currentTruckWt,
+          driver_license_number: loading.driver_license_number,
+          driver_contact_number: loading.driver_contact_number || null,
+          transport_number: loading.transport_number || null,
+          transport_name: loading.transport_name,
+          lr_number: loading.lr_number,
+          created_by: user?.id
+        }).select().single();
+
+        if (dbLoading) {
+          await supabase.from("gate_passes").insert({
+            contract_id: contract.id,
+            loading_detail_id: dbLoading.id,
+            created_by: user?.id
+          });
+        }
+        await supabase.from("contracts").update({ status: newContractStatus }).eq("id", contract.id);
+      } catch (err) {
+        console.warn("Supabase background sync:", err.message);
+      }
     }
 
-    const { data: savedLoading, error: loadingError } = await supabase.from("loading_details").select("*").eq("contract_id", contract.id).single();
-    if (loadingError) {
-      // Local fallback if Supabase loading record wasn't found
-      generateGatePassPdf(contract, loading, gateNum);
-      await supabase.from("contracts").update({ status: "completed" }).eq("id", contract.id);
-      setMessage(`Step 4: Gate pass ${gateNum} generated and downloaded.`);
-      data.refresh();
-      return;
-    }
+    // 4. Generate & Download official PDF
+    generateGatePassPdf(contract, loadingPayload, gateNum);
 
-    const user = (await supabase.auth.getUser()).data.user;
-    const { data: createdGate } = await supabase.from("gate_passes").insert({ contract_id: contract.id, loading_detail_id: savedLoading.id, created_by: user?.id }).select().single();
+    // Refresh state
+    loadDispatches();
+    setLoading(blankLoadingDetails);
+    setMessage(`Gate Pass ${gateNum} successfully generated! Dispatched: ${currentTruckWt} Qtl. Remaining: ${newRemaining.toFixed(2)} Qtl.`);
+    setStep(4);
+  }
 
-    const actualGateNum = createdGate?.gate_pass_number || gateNum;
-    gatePassRecord.gate_pass_number = actualGateNum;
-    try {
-      const existing = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
-      localStorage.setItem("seedledger_gate_passes_v3", JSON.stringify([gatePassRecord, ...existing.filter(g => g.contract_id !== contract.id)]));
-    } catch (e) {}
-
-    generateGatePassPdf(contract, savedLoading, actualGateNum);
-    await supabase.from("contracts").update({ status: "completed" }).eq("id", contract.id);
-    setMessage(`Step 4: Gate pass ${actualGateNum} generated and downloaded.`);
-    data.refresh();
+  // Step 3 save alias
+  async function saveLoading(e) {
+    if (e) e.preventDefault();
+    await makeGatePass();
   }
 
   // Step 2: Send to Buyer via WhatsApp or Mail
@@ -2032,17 +2056,90 @@ function ContractDetail({ data }) {
     {/* STEP 3: LOADING DETAILS AS PER CONTRACT */}
     {currentStep === 3 && (
       <div>
+        {/* CONTRACT BALANCE SUMMARY CARD */}
+        <section className="panel" style={{ padding: 20, marginBottom: 20, background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+            <div>
+              <span className="eyebrow" style={{ color: isNetCotton ? "#d97706" : "#2563eb" }}>CONTRACT DISPATCH TRACKER</span>
+              <strong style={{ fontSize: 16, color: "#1e293b", display: "block" }}>
+                {contract.party_name} — {contract.contract_number}
+              </strong>
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Contract Total</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{contractTotalQty.toFixed(2)} Qtl</div>
+              </div>
+              <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#047857", textTransform: "uppercase", fontWeight: 700 }}>Dispatched</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#065f46" }}>{totalDispatchedSoFar.toFixed(2)} Qtl</div>
+              </div>
+              <div style={{ background: remainingBalanceQty > 0 ? "#fffbeb" : "#eff6ff", border: `1px solid ${remainingBalanceQty > 0 ? "#fde68a" : "#bfdbfe"}`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: remainingBalanceQty > 0 ? "#b45309" : "#1d4ed8", textTransform: "uppercase", fontWeight: 700 }}>Remaining Balance</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: remainingBalanceQty > 0 ? "#b45309" : "#1e40af" }}>{remainingBalanceQty.toFixed(2)} Qtl</div>
+              </div>
+            </div>
+          </div>
+
+          {contractDispatches.length > 0 && (
+            <div style={{ marginTop: 12, borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8 }}>
+                Previous Truck Dispatches for this Contract ({contractDispatches.length}):
+              </div>
+              <div className="table-scroll">
+                <table className="data-table" style={{ fontSize: 11 }}>
+                  <thead>
+                    <tr>
+                      <th>Gate Pass</th>
+                      <th>Date</th>
+                      <th>Truck / Tempo</th>
+                      <th>Net Weight</th>
+                      <th>Transporter</th>
+                      <th>LR No</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contractDispatches.map((p, idx) => (
+                      <tr key={idx}>
+                        <td><strong style={{ color: "#2563eb" }}>{p.gate_pass_number}</strong></td>
+                        <td>{p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}</td>
+                        <td>{p.loading_details?.vehicle_number}</td>
+                        <td><strong>{p.loading_details?.net_weight_quintals} Qtl</strong></td>
+                        <td>{p.loading_details?.transport_name}</td>
+                        <td>{p.loading_details?.lr_number}</td>
+                        <td>
+                          <button
+                            className="button secondary"
+                            style={{ padding: "4px 8px", fontSize: 11 }}
+                            onClick={() => generateGatePassPdf(contract, p.loading_details, p.gate_pass_number)}
+                          >
+                            <ArrowDownToLine size={12}/> PDF
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
+
         <section className="panel">
           <div className="panel-heading">
-            <div><h2>Step 3: Loading details as per contract</h2><p>Exact loading fields from {moduleName} PDF</p></div>
+            <div>
+              <h2>Step 3: Dispatch Truck Loading Details</h2>
+              <p>Enter the details for this truck loading ({remainingBalanceQty > 0 ? `${remainingBalanceQty.toFixed(2)} Qtl left on contract` : "Contract fulfilled"})</p>
+            </div>
             <Truck size={20}/>
           </div>
           <form className="loading-form" onSubmit={saveLoading}>
             <Field label="1. Truck /tempo number" required>
               <input required value={loading.vehicle_number || ""} onChange={e => setLoading({...loading, vehicle_number: e.target.value})} placeholder="e.g. GJ 06 AB 1234"/>
             </Field>
-            <Field label="2. Net Weight quintals" required>
-              <input type="number" min="0.01" step="0.01" required value={loading.net_weight_quintals || ""} onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})} placeholder="Net Weight in Quintals"/>
+            <Field label={`2. Net Weight quintals (Max remaining: ${remainingBalanceQty.toFixed(2)} Qtl)`} required>
+              <input type="number" min="0.01" step="0.01" required value={loading.net_weight_quintals || ""} onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})} placeholder={`e.g. ${remainingBalanceQty > 0 ? remainingBalanceQty : 100}`}/>
             </Field>
             <Field label="3. Driver license no." required>
               <input required value={loading.driver_license_number || ""} onChange={e => setLoading({...loading, driver_license_number: e.target.value})} placeholder="Driver license number"/>
@@ -2062,7 +2159,7 @@ function ContractDetail({ data }) {
               <input required value={loading.lr_number || ""} onChange={e => setLoading({...loading, lr_number: e.target.value})} placeholder="Lorry receipt number"/>
             </Field>
 
-            <button className="button primary full"><Check size={16}/> Save Step 3 Loading Details</button>
+            <button className="button primary full"><PackageCheck size={16}/> Save Loading & Generate Gate Pass</button>
           </form>
         </section>
 
@@ -2083,32 +2180,83 @@ function ContractDetail({ data }) {
         <section className="panel">
           <div className="panel-heading">
             <div>
-              <h2>Step 4: Generate gate pass with all details</h2>
-              <p>Combines Contract Details (Step 1) and Loading Details (Step 3)</p>
+              <h2>Step 4: Gate Pass History & Verification</h2>
+              <p>Generated passes for Contract {contract.contract_number} ({contract.party_name})</p>
             </div>
             <PackageCheck size={22}/>
           </div>
 
           <div style={{ padding: "0 21px 20px" }}>
             <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: 18, marginBottom: 18 }}>
-              <h3 style={{ margin: "0 0 10px", fontSize: 13, color: "#1e293b" }}>Gate Pass Summary ({moduleName})</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, fontSize: 11 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+                <h3 style={{ margin: 0, fontSize: 14, color: "#1e293b" }}>Contract Fulfillment Status</h3>
+                <span style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, background: remainingBalanceQty === 0 ? "#dcfce7" : "#fef3c7", color: remainingBalanceQty === 0 ? "#166534" : "#92400e" }}>
+                  {remainingBalanceQty === 0 ? "✓ 100% Fully Dispatched" : `⚠ ${remainingBalanceQty.toFixed(2)} Qtl Remaining`}
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, fontSize: 11 }}>
                 <div><span style={{ color: "#64748b" }}>Contract:</span> <strong>{contract.contract_number}</strong></div>
                 <div><span style={{ color: "#64748b" }}>Commodity:</span> <strong>{contract.commodity}</strong></div>
                 <div><span style={{ color: "#64748b" }}>Party:</span> <strong>{contract.party_name}</strong></div>
-                <div><span style={{ color: "#64748b" }}>1. Truck/tempo:</span> <strong>{loading.vehicle_number || "Not saved"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>2. Net Weight:</span> <strong>{loading.net_weight_quintals ? `${loading.net_weight_quintals} Quintals` : "—"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>3. Driver License:</span> <strong>{loading.driver_license_number || "—"}</strong></div>
-                {isNetCotton && <div><span style={{ color: "#64748b" }}>4. Driver Contact:</span> <strong>{loading.driver_contact_number || "—"}</strong></div>}
-                <div><span style={{ color: "#64748b" }}>Transport No.:</span> <strong>{loading.transport_number || "—"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>Transporter:</span> <strong>{loading.transport_name || "—"}</strong></div>
-                <div><span style={{ color: "#64748b" }}>LR No.:</span> <strong>{loading.lr_number || "—"}</strong></div>
+                <div><span style={{ color: "#64748b" }}>Contract Total:</span> <strong>{contractTotalQty.toFixed(2)} Qtl</strong></div>
+                <div><span style={{ color: "#64748b" }}>Total Dispatched:</span> <strong style={{ color: "#16a34a" }}>{totalDispatchedSoFar.toFixed(2)} Qtl</strong></div>
+                <div><span style={{ color: "#64748b" }}>Balance Left:</span> <strong style={{ color: remainingBalanceQty > 0 ? "#d97706" : "#475569" }}>{remainingBalanceQty.toFixed(2)} Qtl</strong></div>
               </div>
             </div>
 
-            <button className="button primary full" onClick={makeGatePass} style={{ padding: 14, fontSize: 13, fontWeight: 700 }}>
-              <PackageCheck size={18}/> Generate Gate Pass with all details (Download PDF)
-            </button>
+            {contractDispatches.length > 0 ? (
+              <div style={{ marginBottom: 18 }}>
+                <h4 style={{ fontSize: 13, marginBottom: 8, color: "#1e293b" }}>Generated Gate Passes for this Contract</h4>
+                <div className="table-scroll">
+                  <table className="data-table" style={{ fontSize: 12 }}>
+                    <thead>
+                      <tr>
+                        <th>Pass No.</th>
+                        <th>Truck / Tempo</th>
+                        <th>Dispatched Weight</th>
+                        <th>Transporter</th>
+                        <th>LR No</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contractDispatches.map((p, idx) => (
+                        <tr key={idx}>
+                          <td><strong style={{ color: "#2563eb" }}>{p.gate_pass_number}</strong></td>
+                          <td>{p.loading_details?.vehicle_number}</td>
+                          <td><strong style={{ color: "#16a34a" }}>{p.loading_details?.net_weight_quintals} Qtl</strong></td>
+                          <td>{p.loading_details?.transport_name}</td>
+                          <td>{p.loading_details?.lr_number}</td>
+                          <td>
+                            <button
+                              className="button primary"
+                              style={{ padding: "5px 12px", fontSize: 11 }}
+                              onClick={() => generateGatePassPdf(contract, p.loading_details, p.gate_pass_number)}
+                            >
+                              <ArrowDownToLine size={13}/> Download PDF
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="empty-state" style={{ padding: "20px 0" }}>
+                <span>No truck dispatches generated yet. Go to Step 3 to record truck dispatch.</span>
+              </div>
+            )}
+
+            {remainingBalanceQty > 0 ? (
+              <button className="button primary full" onClick={() => setStep(3)} style={{ padding: 14, fontSize: 13, fontWeight: 700 }}>
+                <Truck size={18}/> Dispatch Next Truck ({remainingBalanceQty.toFixed(2)} Quintals Remaining)
+              </button>
+            ) : (
+              <button className="button secondary full" onClick={() => navigate("/gate-passes")} style={{ padding: 14, fontSize: 13, fontWeight: 700 }}>
+                <PackageCheck size={18}/> View in Gate Passes Register
+              </button>
+            )}
           </div>
         </section>
 
@@ -2165,7 +2313,6 @@ function GatePasses({ data, activeModule }) {
   const [supabasePasses, setSupabasePasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("current"); // "current" | "all" | "cotton_seed" | "net_cotton"
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -2173,7 +2320,7 @@ function GatePasses({ data, activeModule }) {
     setLoading(true);
     supabase
       .from("gate_passes")
-      .select("*, contracts(*)")
+      .select("*, contracts(*), loading_details(*)")
       .order("created_at", { ascending: false })
       .then(({ data: rows, error: e }) => {
         if (e) {
@@ -2186,85 +2333,59 @@ function GatePasses({ data, activeModule }) {
       .catch(() => setLoading(false));
   }, []);
 
-  // Consolidate passes:
-  // 1. Supabase gate_passes
-  // 2. localStorage saved gate passes (seedledger_gate_passes_v3)
-  // 3. Contracts that have loading details recorded or completed status
-  const consolidatedPasses = useMemo(() => {
+  // Consolidate passes strictly for activeModule:
+  // 1. Supabase gate_passes (matching activeModule)
+  // 2. localStorage saved gate passes (seedledger_gate_passes_v4 matching activeModule)
+  const displayedPasses = useMemo(() => {
     const list = [];
     const seenGateNums = new Set();
-    const seenContractIds = new Set();
 
-    // 1. Add Supabase passes
+    // 1. Add Supabase passes for activeModule
     for (const p of supabasePasses) {
+      const pMod = p.contracts?.module || p.module || "cotton_seed";
+      if (pMod !== activeModule) continue;
+
       const gNum = p.gate_pass_number;
       if (gNum) seenGateNums.add(gNum);
-      if (p.contract_id) seenContractIds.add(p.contract_id);
-      list.push(p);
+      list.push({
+        ...p,
+        module: pMod,
+        loading_details: p.loading_details || null
+      });
     }
 
-    // 2. Add local passes
+    // 2. Add local passes (seedledger_gate_passes_v4) for activeModule
     try {
-      const local = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      const local = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]");
       for (const p of local) {
+        const pMod = p.contracts?.module || p.module || "cotton_seed";
+        if (pMod !== activeModule) continue;
+
         if (!seenGateNums.has(p.gate_pass_number)) {
           seenGateNums.add(p.gate_pass_number);
-          if (p.contract_id) seenContractIds.add(p.contract_id);
           list.push(p);
         }
       }
     } catch (e) {}
 
-    // 3. For any contract in data.contracts that is marked "completed" or "loading" or has loading details in localStorage
-    if (Array.isArray(data.contracts)) {
-      for (const c of data.contracts) {
-        if (seenContractIds.has(c.id)) continue;
-        let hasLoading = c.status === "completed" || c.status === "loading";
-        let localLoading = null;
-        try {
-          const raw = localStorage.getItem("seedledger_loading_" + c.id);
-          if (raw) {
-            localLoading = JSON.parse(raw);
-            hasLoading = true;
-          }
-        } catch (e) {}
+    // 3. Fallback from legacy v3 storage if not yet migrated
+    try {
+      const legacy = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      for (const p of legacy) {
+        const pMod = p.contracts?.module || p.module || "cotton_seed";
+        if (pMod !== activeModule) continue;
 
-        if (hasLoading) {
-          const mod = c.module || "cotton_seed";
-          const prefix = mod === "net_cotton" ? "GP-NC" : "GP-CS";
-          const generatedNum = `${prefix}-2026-` + (String(c.id).replace(/\D/g, "").slice(-4) || "1001");
-          if (!seenGateNums.has(generatedNum)) {
-            seenGateNums.add(generatedNum);
-            seenContractIds.add(c.id);
-            list.push({
-              id: "inferred-" + c.id,
-              gate_pass_number: generatedNum,
-              created_at: c.contract_date || new Date().toISOString(),
-              module: mod,
-              contracts: c,
-              loading_details: localLoading
-            });
-          }
+        if (!seenGateNums.has(p.gate_pass_number)) {
+          seenGateNums.add(p.gate_pass_number);
+          list.push(p);
         }
       }
-    }
+    } catch (e) {}
 
     // Sort descending by created_at
     list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     return list;
-  }, [supabasePasses, data.contracts]);
-
-  // Filter based on active filter
-  const displayedPasses = useMemo(() => {
-    return consolidatedPasses.filter(p => {
-      const pMod = p.contracts?.module || p.module || "cotton_seed";
-      if (moduleFilter === "current") {
-        return pMod === activeModule;
-      }
-      if (moduleFilter === "all") return true;
-      return pMod === moduleFilter;
-    });
-  }, [consolidatedPasses, activeModule, moduleFilter]);
+  }, [supabasePasses, activeModule]);
 
   const handleDownloadPass = (p) => {
     const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
@@ -2282,32 +2403,14 @@ function GatePasses({ data, activeModule }) {
   return <>
     <PageHeading
       eyebrow={`STEP 04 / ${moduleName.toUpperCase()}`}
-      title="Step 4: Gate Passes"
-      description={`Generate, review and download official Gate Passes for Cotton Seed and Net Cotton.`}
-      action={
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className={`button ${moduleFilter === "current" ? "primary" : "secondary"}`}
-            style={{ fontSize: 12, padding: "6px 12px" }}
-            onClick={() => setModuleFilter("current")}
-          >
-            {moduleName} ({consolidatedPasses.filter(p => (p.contracts?.module || p.module || "cotton_seed") === activeModule).length})
-          </button>
-          <button
-            className={`button ${moduleFilter === "all" ? "primary" : "secondary"}`}
-            style={{ fontSize: 12, padding: "6px 12px" }}
-            onClick={() => setModuleFilter("all")}
-          >
-            All Passes ({consolidatedPasses.length})
-          </button>
-        </div>
-      }
+      title={`${moduleName} Gate Passes`}
+      description={`Official gate passes generated exclusively for ${moduleName}. Each truck dispatch has a verified pass and weight record.`}
     />
     <section className="panel">
       <div className="panel-heading">
         <div>
-          <h2>Gate Passes Register</h2>
-          <p>Official passes with verified contract and loading details ({displayedPasses.length} total)</p>
+          <h2>{moduleName} Gate Passes Register</h2>
+          <p>Verified truck dispatches for {moduleName} ({displayedPasses.length} total pass{displayedPasses.length === 1 ? "" : "es"})</p>
         </div>
         <PackageCheck size={20}/>
       </div>
@@ -2319,8 +2422,8 @@ function GatePasses({ data, activeModule }) {
       ) : !displayedPasses.length ? (
         <div className="empty-state">
           <PackageCheck size={28}/>
-          <strong>No gate passes found for {moduleFilter === "current" ? moduleName : "this filter"}</strong>
-          <span>Save Step 3 loading details on any contract to automatically generate its gate pass.</span>
+          <strong>No gate passes found for {moduleName}</strong>
+          <span>Save Step 3 loading details on any {moduleName} contract to generate its gate pass.</span>
           <button className="button primary" onClick={() => {
             const first = data.contracts.find(c => (c.module || "cotton_seed") === activeModule);
             if (first) navigate(`/contracts/${first.id}?step=3`);
@@ -2333,38 +2436,26 @@ function GatePasses({ data, activeModule }) {
             <thead>
               <tr>
                 <th>Gate Pass</th>
-                <th>Module</th>
                 <th>Contract</th>
                 <th>Party Name</th>
+                <th>Vehicle / Truck</th>
+                <th>Dispatched Qtl</th>
+                <th>Transporter / LR</th>
                 <th>Date</th>
-                <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {displayedPasses.map(p => {
-                const passMod = p.contracts?.module || p.module || "cotton_seed";
-                const isPassNetCotton = passMod === "net_cotton";
                 const contractObj = p.contracts || {};
+                const loadingObj = p.loading_details || {};
 
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id || p.gate_pass_number}>
                     <td data-label="Gate Pass">
-                      <strong className="contract-code" style={{ color: isPassNetCotton ? "#d97706" : "#2563eb" }}>
+                      <strong className="contract-code" style={{ color: isNetCotton ? "#d97706" : "#2563eb" }}>
                         {p.gate_pass_number}
                       </strong>
-                    </td>
-                    <td data-label="Module">
-                      <span style={{
-                        padding: "3px 8px",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        background: isPassNetCotton ? "#fef3c7" : "#e0e7ff",
-                        color: isPassNetCotton ? "#92400e" : "#3730a3"
-                      }}>
-                        {isPassNetCotton ? "Net Cotton" : "Cotton Seed"}
-                      </span>
                     </td>
                     <td data-label="Contract">
                       <strong>{contractObj.contract_number || "—"}</strong>
@@ -2375,11 +2466,20 @@ function GatePasses({ data, activeModule }) {
                         {contractObj.party_name || "—"}
                       </span>
                     </td>
+                    <td data-label="Vehicle">
+                      <strong>{loadingObj.vehicle_number || "—"}</strong>
+                    </td>
+                    <td data-label="Dispatched Qtl">
+                      <strong style={{ color: "#16a34a" }}>
+                        {loadingObj.net_weight_quintals ? `${loadingObj.net_weight_quintals} Qtl` : "—"}
+                      </strong>
+                    </td>
+                    <td data-label="Transporter">
+                      <div>{loadingObj.transport_name || "—"}</div>
+                      {loadingObj.lr_number && <small className="cell-sub">LR: {loadingObj.lr_number}</small>}
+                    </td>
                     <td data-label="Date">
                       {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
-                    </td>
-                    <td data-label="Status">
-                      <StatusBadge status="completed"/>
                     </td>
                     <td data-label="Action">
                       <button
@@ -2442,7 +2542,7 @@ function PartiesPage({ data, activeModule }) {
 
     // Add parties from local gate passes
     try {
-      const passes = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      const passes = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || localStorage.getItem("seedledger_gate_passes_v3") || "[]");
       passes.forEach(p => {
         const c = p.contracts;
         if (c?.party_name) {
