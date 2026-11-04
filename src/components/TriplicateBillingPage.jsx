@@ -30,6 +30,7 @@ import {
   saveLocalTriplicateBills
 } from "../lib/farmerStore";
 import { generateTriplicateBillPdf } from "../lib/documents";
+import { showAppToast } from "../App";
 
 const BUYER_DEFAULT = {
   buyer_name: "Shree Jagdamba Cotton G And P Factory",
@@ -268,6 +269,12 @@ export default function TriplicateBillingPage() {
     if (andPrint) {
       generateTriplicateBillPdf(newBill);
     }
+
+    showAppToast({
+      type: "success",
+      title: "🧾 Triplicate Bill Saved",
+      message: `Bill ${newBill.bill_number} for ${newBill.seller_name} recorded! Net Payable: ₹${Number(calculations.netPayable || 0).toLocaleString("en-IN")}`
+    });
 
     setMessage(`Triplicate Bill ${newBill.bill_number} for "${newBill.seller_name}" saved successfully!`);
     

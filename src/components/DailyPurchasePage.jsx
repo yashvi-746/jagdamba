@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Plus, Trash2, Save, Printer, Check, Search, Calendar, FileText, Layers, ShieldCheck, Sparkles, CornerDownLeft, LayoutList, Table as TableIcon } from "lucide-react";
 import { getLocalDailyPurchases, saveLocalDailyPurchases, getLocalFarmers } from "../lib/farmerStore";
 import { generateDailyPurchaseReportPdf } from "../lib/documents";
+import { showAppToast } from "../App";
 
 export default function DailyPurchasePage() {
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-"));
@@ -208,6 +209,11 @@ export default function DailyPurchasePage() {
 
   const saveDailyLog = () => {
     saveLocalDailyPurchases(records);
+    showAppToast({
+      type: "success",
+      title: "💾 Daily Purchases Saved",
+      message: `${records.filter(r => r.farmer_name).length} farmer purchase entries recorded for ${purchaseDate}!`
+    });
     setSavedMsg("Daily purchase entries saved successfully to local store.");
     setTimeout(() => setSavedMsg(""), 4000);
   };

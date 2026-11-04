@@ -199,9 +199,21 @@ export default function App() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
+      showAppToast({
+        type: "success",
+        title: "🟢 Back Online",
+        message: "Internet reconnected. Syncing cloud ledger in background."
+      });
       triggerSync();
     };
-    const handleOffline = () => setIsOnline(false);
+    const handleOffline = () => {
+      setIsOnline(false);
+      showAppToast({
+        type: "warning",
+        title: "⚡ Working Offline",
+        message: "No internet connection detected. Data saved safely to local storage."
+      });
+    };
     const handleQueueChange = () => setOfflinePending(getOfflineQueue().length);
 
     window.addEventListener("online", handleOnline);
@@ -968,6 +980,46 @@ function ContractForm({ data, activeModule }) {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Known parties list for auto-fill suggestions
+  const knownParties = useMemo(() => {
+    const map = new Map();
+    (data.contracts || []).forEach(c => {
+      if (c.party_name?.trim()) {
+        const key = c.party_name.trim().toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            name: c.party_name.trim(),
+            gst_number: c.gst_number || "",
+            party_address: c.party_address || c.delivery_address || "",
+            contact_number: c.contact_number || "",
+            delivery_address: c.delivery_address || ""
+          });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [data.contracts]);
+
+  const handlePartySelect = (partyName) => {
+    set("party_name", partyName);
+    const match = knownParties.find(p => p.name.toLowerCase() === partyName.trim().toLowerCase());
+    if (match) {
+      setForm(prev => ({
+        ...prev,
+        party_name: match.name,
+        gst_number: match.gst_number || prev.gst_number,
+        party_address: match.party_address || prev.party_address,
+        contact_number: match.contact_number || prev.contact_number,
+        delivery_address: match.delivery_address || prev.delivery_address
+      }));
+      showAppToast({
+        type: "info",
+        title: "ℹ️ Party Auto-filled",
+        message: `Loaded saved GSTIN & Address for ${match.name}`
+      });
+    }
+  };
+
   // Rapid Keyboard Mode refs
   const contractRefs = useRef({});
 
@@ -1004,23 +1056,53 @@ function ContractForm({ data, activeModule }) {
   const validateStep1 = () => {
     setError("");
     if (!form.party_name?.trim()) {
-      setError("Please enter 3. PARTY NAME before proceeding.");
+      const msg = "Please enter 3. PARTY NAME before proceeding.";
+      setError(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Missing Required Field",
+        message: msg
+      });
       return false;
     }
     if (!form.quantity) {
-      setError("Please enter QUANTITY.");
+      const msg = "Please enter QUANTITY.";
+      setError(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Missing Required Field",
+        message: msg
+      });
       return false;
     }
     if (isNetCotton && !form.rate_per_candy) {
-      setError("Please enter 14. RATE PER CANDY.");
+      const msg = "Please enter 14. RATE PER CANDY.";
+      setError(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Missing Required Field",
+        message: msg
+      });
       return false;
     }
     if (!isNetCotton && !form.rate_per_quintal) {
-      setError("Please enter 11. RATE PER QUINTALS.");
+      const msg = "Please enter 11. RATE PER QUINTALS.";
+      setError(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Missing Required Field",
+        message: msg
+      });
       return false;
     }
     if (!form.delivery_address?.trim()) {
-      setError("Please enter DELIVERY ADDRESS.");
+      const msg = "Please enter DELIVERY ADDRESS.";
+      setError(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Missing Required Field",
+        message: msg
+      });
       return false;
     }
     return true;
@@ -1254,15 +1336,19 @@ function ContractForm({ data, activeModule }) {
                       placeholder="e.g. NC-2026-003"
                     />
                   </Field>
-                  <Field label="3. PARTY NAME" required>
+                  <Field label="3. PARTY NAME" required hint={knownParties.length ? "Type or select saved party to auto-fill" : ""}>
                     <input
                       ref={el => (contractRefs.current["party_name"] = el)}
                       required
+                      list="known_parties_cs"
                       value={form.party_name}
-                      onChange={e => set("party_name", e.target.value)}
+                      onChange={e => handlePartySelect(e.target.value)}
                       onKeyDown={e => handleContractKeyDown(e, "party_name")}
                       placeholder="Enter Party Name"
                     />
+                    <datalist id="known_parties_cs">
+                      {knownParties.map(p => <option key={p.name} value={p.name} />)}
+                    </datalist>
                   </Field>
                   <Field label="4. GST NUMBER">
                     <input
@@ -1412,15 +1498,19 @@ function ContractForm({ data, activeModule }) {
                       placeholder="e.g. CS-2026-003"
                     />
                   </Field>
-                  <Field label="3. PARTY NAME" required>
+                  <Field label="3. PARTY NAME" required hint={knownParties.length ? "Type or select saved party to auto-fill" : ""}>
                     <input
                       ref={el => (contractRefs.current["party_name"] = el)}
                       required
+                      list="known_parties_cs"
                       value={form.party_name}
-                      onChange={e => set("party_name", e.target.value)}
+                      onChange={e => handlePartySelect(e.target.value)}
                       onKeyDown={e => handleContractKeyDown(e, "party_name")}
                       placeholder="Enter Party Name"
                     />
+                    <datalist id="known_parties_cs">
+                      {knownParties.map(p => <option key={p.name} value={p.name} />)}
+                    </datalist>
                   </Field>
                   <Field label="4. GST NUMBER">
                     <input
@@ -1801,14 +1891,35 @@ function ContractDetail({ data }) {
   // Step 3 / 4: Save Truck Loading & Generate Gate Pass Immediately
   async function makeGatePass() {
     if (!loading.vehicle_number || !loading.net_weight_quintals || !loading.transport_name || !loading.lr_number) {
-      setMessage("Please fill all dispatch fields (Vehicle No, Net Weight, Transporter Name, and LR No).");
+      const msg = "Please fill all dispatch fields (Vehicle No, Net Weight, Transporter Name, and LR No).";
+      setMessage(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Incomplete Dispatch Fields",
+        message: msg
+      });
       return;
     }
 
     const currentTruckWt = Number(loading.net_weight_quintals);
     if (currentTruckWt <= 0) {
-      setMessage("Please enter a valid Net Weight in Quintals.");
+      const msg = "Please enter a valid Net Weight in Quintals.";
+      setMessage(msg);
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Invalid Weight",
+        message: msg
+      });
       return;
+    }
+
+    // Weight over remaining balance notification
+    if (contractTotalQty > 0 && currentTruckWt > remainingBalanceQty) {
+      showAppToast({
+        type: "warning",
+        title: "⚠️ Exceeds Remaining Balance",
+        message: `Truck weight (${currentTruckWt} Qtl) exceeds balance (${remainingBalanceQty.toFixed(2)} Qtl) by ${(currentTruckWt - remainingBalanceQty).toFixed(2)} Qtl!`
+      });
     }
 
     const newTotalDispatched = totalDispatchedSoFar + currentTruckWt;
@@ -2874,7 +2985,14 @@ function GatePasses({ data, activeModule }) {
                           style={{ fontSize: 11, padding: "5px 8px" }}
                           onClick={() => {
                             const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
-                            if (contract) printGatePassSlip(contract, p.loading_details, p.gate_pass_number);
+                            if (contract) {
+                              printGatePassSlip(contract, p.loading_details, p.gate_pass_number);
+                              showAppToast({
+                                type: "success",
+                                title: "🖨️ Clearance Slip Printed",
+                                message: `Gate pass slip printed for ${p.gate_pass_number} (${loadingObj.vehicle_number || "Truck"})`
+                              });
+                            }
                           }}
                           title="Print Instant Gate Clearance Slip"
                         >
