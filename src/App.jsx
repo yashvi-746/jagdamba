@@ -145,6 +145,14 @@ function useContracts(offlineOverride = false) {
   return { contracts, setContracts: setContractsAndPersist, refresh, loading, error, demoMode };
 }
 
+// Global Toast Notification Helper
+let globalToastHandler = null;
+export function showAppToast(toast) {
+  if (globalToastHandler) {
+    globalToastHandler(toast);
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem("seedledger_offline_mode") === "true");
@@ -154,6 +162,19 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlinePending, setOfflinePending] = useState(() => getOfflineQueue().length);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    globalToastHandler = (newToast) => {
+      const id = Date.now() + Math.random();
+      const toastObj = { id, ...newToast };
+      setToasts(prev => [...prev.slice(-3), toastObj]); // keep up to 4 latest toasts
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, newToast.duration || 4500);
+    };
+    return () => { globalToastHandler = null; };
+  }, []);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -397,6 +418,70 @@ export default function App() {
           <span>© {new Date().getFullYear()} Shree Jagdamba — {moduleName} System</span>
           <span><span className="status-dot"/> Exact 4-Step Contract & Gate Pass Workflow</span>
         </footer>
+
+        {/* Global Floating Toast Container */}
+        {toasts.length > 0 && (
+          <div style={{
+            position: "fixed",
+            top: 24,
+            right: 24,
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            maxWidth: 380,
+            width: "calc(100% - 48px)",
+            pointerEvents: "none"
+          }}>
+            {toasts.map(t => {
+              const isError = t.type === "error";
+              const isWarn = t.type === "warning";
+              const isInfo = t.type === "info";
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    pointerEvents: "auto",
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)",
+                    background: isError ? "#fef2f2" : isWarn ? "#fffbeb" : isInfo ? "#eff6ff" : "#f0fdf4",
+                    border: `1.5px solid ${isError ? "#fca5a5" : isWarn ? "#fde68a" : isInfo ? "#bfdbfe" : "#86efac"}`,
+                    color: isError ? "#991b1b" : isWarn ? "#92400e" : isInfo ? "#1e40af" : "#166534",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    fontSize: 12.5,
+                    lineHeight: 1.4,
+                    animation: "fadeInToast 0.25s ease-out"
+                  }}
+                >
+                  <span style={{ fontSize: 16, marginTop: -1 }}>
+                    {isError ? "❌" : isWarn ? "⚠️" : isInfo ? "ℹ️" : "✅"}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    {t.title && <strong style={{ display: "block", fontSize: 13, marginBottom: 2 }}>{t.title}</strong>}
+                    <div>{t.message}</div>
+                  </div>
+                  <button
+                    onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "inherit",
+                      opacity: 0.6,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      padding: 0
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );
@@ -1709,6 +1794,16 @@ function ContractDetail({ data }) {
     loadDispatches();
     setLoading(blankLoadingDetails);
     setMessage(`Gate Pass ${gateNum} successfully generated! Dispatched: ${currentTruckWt} Qtl. Remaining: ${newRemaining.toFixed(2)} Qtl.`);
+    
+    // Trigger floating notification
+    showAppToast({
+      type: isFullyCompleted ? "success" : "info",
+      title: isFullyCompleted ? "🎉 Contract Fully Completed" : `🚛 Gate Pass ${gateNum} Generated`,
+      message: isFullyCompleted
+        ? `All ${contractTotalQty} Qtl dispatched! Contract fulfilled.`
+        : `Dispatched ${currentTruckWt} Qtl. Remaining balance: ${newRemaining.toFixed(2)} Qtl.`
+    });
+
     setStep(4);
   }
 
@@ -1747,7 +1842,13 @@ function ContractDetail({ data }) {
       await supabase.from("contracts").update({ status: "pending" }).eq("id", contract.id);
       data.refresh();
     }
-    setMessage(`Step 2: Confirmation sent to Buyer via ${channel === "whatsapp" ? "WhatsApp" : "Email"}.`);
+    const sentMsg = `Confirmation dispatched to ${contract.party_name} via ${channel === "whatsapp" ? "WhatsApp" : "Email"}.`;
+    setMessage(sentMsg);
+    showAppToast({
+      type: "success",
+      title: "📤 Contract Dispatched",
+      message: sentMsg
+    });
   }
 
   const hasLoadingSaved = Boolean(loading.vehicle_number && loading.net_weight_quintals);
