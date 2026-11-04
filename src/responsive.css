@@ -261,6 +261,21 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
    BREAKPOINTS: Phablets & Mobile Phones (max-width: 640px)
    ========================================================================== */
 @media (max-width: 640px) {
+  body {
+    background: #edf2f7;
+  }
+
+  .main-area {
+    max-width: 430px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .page-content {
+    max-width: 430px;
+    margin: 0 auto;
+  }
+
   .topbar {
     padding: 0 14px;
     height: 58px;
@@ -292,6 +307,14 @@ button, input, select, textarea, .nav-item, .clickable-row, .stepper-tab {
 
   .page-heading .button {
     width: 100%;
+  }
+
+  .panel,
+  .stat-card,
+  .workflow-step-card,
+  .contract-stepper,
+  .form-panel {
+    border-radius: 16px;
   }
 
   /* Single Column Stacking for Small Devices */
