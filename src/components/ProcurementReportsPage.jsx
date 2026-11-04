@@ -165,8 +165,8 @@ export default function ProcurementReportsPage() {
       </div>
 
       {/* CONTAINER 1: Filter & Query Bar */}
-      <div className="modern-procurement-card" style={{ marginBottom: 18 }}>
-        <div className="container-header-bar">
+      <div className="modern-procurement-card report-filter-card" style={{ marginBottom: 18 }}>
+        <div className="container-header-bar report-filter-header">
           <div className="container-title">
             <h2>Report Filter & Date Parameters</h2>
             <span className="container-badge">Handod Procurement Unit</span>
@@ -174,7 +174,7 @@ export default function ProcurementReportsPage() {
 
           <div className="report-filters-wrapper">
             <div className="report-filter-date-row">
-              <div className="report-filter-field">
+              <div className="report-filter-field date-field">
                 <span className="filter-label">From:</span>
                 <input
                   type="text"
@@ -184,7 +184,7 @@ export default function ProcurementReportsPage() {
                 />
               </div>
 
-              <div className="report-filter-field">
+              <div className="report-filter-field date-field">
                 <span className="filter-label">To:</span>
                 <input
                   type="text"
