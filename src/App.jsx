@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import { getOfflineQueue, syncOfflineQueue } from "./lib/offlineSync";
-import { generateContractPdf, generateGatePassPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
+import { generateContractPdf, generateGatePassPdf, printGatePassSlip, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
 import DailyPurchasePage from "./components/DailyPurchasePage";
 import TriplicateBillingPage from "./components/TriplicateBillingPage";
 import ProcurementReportsPage from "./components/ProcurementReportsPage";
@@ -2729,14 +2729,27 @@ function GatePasses({ data, activeModule }) {
                       {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
                     </td>
                     <td data-label="Action">
-                      <button
-                        className="button secondary"
-                        style={{ fontSize: 11, padding: "5px 10px" }}
-                        onClick={() => handleDownloadPass(p)}
-                        title="Download Gate Pass PDF"
-                      >
-                        <ArrowDownToLine size={13}/> PDF
-                      </button>
+                      <div style={{ display: "flex", gap: 5 }}>
+                        <button
+                          className="button primary"
+                          style={{ fontSize: 11, padding: "5px 8px" }}
+                          onClick={() => {
+                            const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
+                            if (contract) printGatePassSlip(contract, p.loading_details, p.gate_pass_number);
+                          }}
+                          title="Print Instant Gate Clearance Slip"
+                        >
+                          🖨️ Slip
+                        </button>
+                        <button
+                          className="button secondary"
+                          style={{ fontSize: 11, padding: "5px 8px" }}
+                          onClick={() => handleDownloadPass(p)}
+                          title="Download Gate Pass PDF"
+                        >
+                          <ArrowDownToLine size={13}/> PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -2754,6 +2767,7 @@ function PartiesPage({ data, activeModule }) {
   const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
   const [filterMode, setFilterMode] = useState("current"); // "current" | "all"
   const [dbParties, setDbParties] = useState([]);
+  const [selectedPartyLedger, setSelectedPartyLedger] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -2822,7 +2836,38 @@ function PartiesPage({ data, activeModule }) {
       }
     });
 
-    const all = Array.from(map.values());
+    // Compute contracts, contracted qty, and dispatched qty per party
+    const all = Array.from(map.values()).map(p => {
+      const pKey = p.name.trim().toLowerCase();
+      const pContracts = (data.contracts || []).filter(c => (c.party_name || "").trim().toLowerCase() === pKey);
+      let totalContracted = 0;
+      pContracts.forEach(c => {
+        const qMatch = String(c.quantity || "").match(/[\d.]+/);
+        if (qMatch) totalContracted += parseFloat(qMatch[0]);
+      });
+
+      // Dispatches logged in seedledger_gate_passes_v4
+      let totalDispatched = 0;
+      try {
+        const passes = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]");
+        passes.forEach(pass => {
+          if ((pass.contracts?.party_name || "").trim().toLowerCase() === pKey) {
+            totalDispatched += Number(pass.loading_details?.net_weight_quintals) || 0;
+          }
+        });
+      } catch (e) {}
+
+      const pendingBalance = totalContracted > 0 ? Math.max(0, totalContracted - totalDispatched) : 0;
+
+      return {
+        ...p,
+        contractsCount: pContracts.length,
+        totalContracted,
+        totalDispatched,
+        pendingBalance
+      };
+    });
+
     if (filterMode === "current") {
       return all.filter(p => p.module === activeModule || p.module === "all");
     }
@@ -2874,16 +2919,22 @@ function PartiesPage({ data, activeModule }) {
               <tr>
                 <th>Party Name</th>
                 <th>Module</th>
+                <th>Contracts</th>
+                <th>Contracted Qtl</th>
+                <th>Dispatched Qtl</th>
+                <th>Pending Balance</th>
                 <th>GST Number</th>
-                <th>Contact Number</th>
-                <th>Address</th>
+                <th>Contact</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {partyList.map((p, i) => (
                 <tr key={i}>
-                  <td data-label="Party Name"><strong style={{ color: "#0f172a" }}>{p.name}</strong></td>
+                  <td data-label="Party Name">
+                    <strong style={{ color: "#0f172a", display: "block" }}>{p.name}</strong>
+                    {p.address && <small className="cell-sub" style={{ fontSize: 11 }}>{p.address}</small>}
+                  </td>
                   <td data-label="Module">
                     <span style={{
                       padding: "2px 8px",
@@ -2896,9 +2947,24 @@ function PartiesPage({ data, activeModule }) {
                       {p.module === "net_cotton" ? "Net Cotton" : p.module === "all" ? "All" : "Cotton Seed"}
                     </span>
                   </td>
+                  <td data-label="Contracts">
+                    <strong>{p.contractsCount}</strong>
+                  </td>
+                  <td data-label="Contracted Qtl">
+                    <span>{p.totalContracted > 0 ? `${p.totalContracted.toFixed(2)} Qtl` : "—"}</span>
+                  </td>
+                  <td data-label="Dispatched Qtl">
+                    <strong style={{ color: "#16a34a" }}>
+                      {p.totalDispatched > 0 ? `${p.totalDispatched.toFixed(2)} Qtl` : "0 Qtl"}
+                    </strong>
+                  </td>
+                  <td data-label="Pending Balance">
+                    <strong style={{ color: p.pendingBalance > 0 ? "#b45309" : "#64748b" }}>
+                      {p.totalContracted > 0 ? `${p.pendingBalance.toFixed(2)} Qtl` : "—"}
+                    </strong>
+                  </td>
                   <td data-label="GST Number">{p.gst_number || "—"}</td>
-                  <td data-label="Contact Number">{p.contact_number || "—"}</td>
-                  <td data-label="Address">{p.address || "—"}</td>
+                  <td data-label="Contact">{p.contact_number || "—"}</td>
                   <td data-label="Action">
                     <button
                       className="button primary"

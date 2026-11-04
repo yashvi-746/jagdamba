@@ -318,6 +318,104 @@ export function generateGatePassPdf(c, l, number, { returnBlob = false } = {}) {
   pdf.save(`Gate-Pass-${number || "draft"}.pdf`);
 }
 
+// STEP 4: Direct Print Slip for Gate Passes (Native Thermal or A4 Half-Sheet)
+export function printGatePassSlip(c, l, number) {
+  const isNetCotton = c.module === "net_cotton";
+  const contractedQtyMatch = String(c.quantity || "").match(/[\d.]+/);
+  const contractedQtyNum = contractedQtyMatch ? parseFloat(contractedQtyMatch[0]) : 0;
+  const currentNetWt = Number(l?.net_weight_quintals) || 0;
+  const previousDispatched = Number(l?.total_dispatched_prior) || 0;
+  const totalWithCurrent = previousDispatched + currentNetWt;
+  const remainingBalance = contractedQtyNum > 0 ? Math.max(0, contractedQtyNum - totalWithCurrent) : 0;
+
+  const printWindow = window.open("", "_blank", "width=700,height=800");
+  if (!printWindow) {
+    alert("Please allow popups to print the gate pass slip.");
+    return;
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Gate Pass ${number || "Slip"}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; color: #0f172a; }
+        .slip-box { max-width: 620px; margin: 0 auto; border: 2px solid #0f172a; padding: 20px; border-radius: 8px; }
+        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px; }
+        .header h1 { margin: 0 0 4px; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header p { margin: 2px 0; font-size: 11px; color: #475569; }
+        .pass-meta { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px; margin-bottom: 16px; }
+        .details-grid div { border-bottom: 1px dotted #cbd5e1; padding-bottom: 4px; }
+        .details-grid span { color: #64748b; }
+        .details-grid strong { float: right; color: #0f172a; }
+        .balance-box { background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 16px; font-size: 12px; }
+        .balance-box table { width: 100%; border-collapse: collapse; }
+        .balance-box td { padding: 4px; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 36px; padding-top: 24px; border-top: 1px solid #cbd5e1; font-size: 11px; text-align: center; }
+        .sig-block { width: 30%; border-top: 1px solid #0f172a; padding-top: 6px; }
+        @media print {
+          body { padding: 0; }
+          .slip-box { border: 1px solid #000; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="slip-box">
+        <div class="header">
+          <h1>Shree Jagdamba Cotton Ginning & Pressing Factory</h1>
+          <p>At Handod Ta sankheda Dist Chottaudepur-391145 | GST: 24AAHFS2183D1ZF</p>
+          <p>Email: jagdambavhm@gmail.com | GATE PASS CLEARANCE SLIP (${isNetCotton ? "NET COTTON" : "COTTON SEED"})</p>
+        </div>
+
+        <div class="pass-meta">
+          <span>PASS NO: ${number || "—"}</span>
+          <span>DATE: ${new Date().toLocaleDateString("en-IN")}</span>
+        </div>
+
+        <div class="details-grid">
+          <div><span>Contract No:</span> <strong>${c.contract_number || "—"}</strong></div>
+          <div><span>Party Name:</span> <strong>${c.party_name || "—"}</strong></div>
+          <div><span>Truck / Tempo:</span> <strong>${l?.vehicle_number || "—"}</strong></div>
+          <div><span>Driver License:</span> <strong>${l?.driver_license_number || "—"}</strong></div>
+          ${isNetCotton ? `<div><span>Driver Contact:</span> <strong>${l?.driver_contact_number || "—"}</strong></div>` : ""}
+          <div><span>Transporter:</span> <strong>${l?.transport_name || "—"}</strong></div>
+          <div><span>LR No:</span> <strong>${l?.lr_number || "—"}</strong></div>
+          ${isNetCotton ? `<div><span>PR / Lot:</span> <strong>PR:${c.pr_no || "—"} | Lot:${c.lot_no || "—"}</strong></div>` : ""}
+        </div>
+
+        <div class="balance-box">
+          <table>
+            <tr>
+              <td><strong>Contract Total:</strong> ${contractedQtyNum.toFixed(2)} Qtl</td>
+              <td><strong style="color: #16a34a;">This Truck Wt:</strong> ${currentNetWt.toFixed(2)} Qtl</td>
+              <td><strong>Dispatched:</strong> ${totalWithCurrent.toFixed(2)} Qtl</td>
+              <td><strong style="color: ${remainingBalance > 0 ? '#b45309' : '#047857'};">Remaining:</strong> ${remainingBalance.toFixed(2)} Qtl</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="signatures">
+          <div class="sig-block">Driver Signature</div>
+          <div class="sig-block">Weighbridge Clerk</div>
+          <div class="sig-block">Security Gate In-Charge</div>
+        </div>
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
+
 // PDF EXPORT FOR COTTON DAILY PURCHASE (Page 1 & 3)
 export function generateDailyPurchaseReportPdf(date, records) {
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
