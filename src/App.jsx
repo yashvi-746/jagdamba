@@ -2468,6 +2468,7 @@ function GatePasses({ data, activeModule }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("all"); // "all" | "today"
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -2489,8 +2490,6 @@ function GatePasses({ data, activeModule }) {
   }, []);
 
   // Consolidate passes strictly for activeModule:
-  // 1. Supabase gate_passes (matching activeModule)
-  // 2. localStorage saved gate passes (seedledger_gate_passes_v4 matching activeModule)
   const displayedPasses = useMemo(() => {
     const list = [];
     const seenGateNums = new Set();
@@ -2540,19 +2539,31 @@ function GatePasses({ data, activeModule }) {
     // Sort descending by created_at
     list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-    // Optional quick search filtering
-    if (!searchTerm.trim()) return list;
+    // Date Filter: Today's Passes vs All Passes
+    let filtered = list;
+    if (dateFilter === "today") {
+      const todayStr = new Date().toDateString();
+      filtered = filtered.filter(p => {
+        if (!p.created_at) return false;
+        return new Date(p.created_at).toDateString() === todayStr;
+      });
+    }
+
+    // Quick search filtering
+    if (!searchTerm.trim()) return filtered;
     const q = searchTerm.toLowerCase();
-    return list.filter(p => {
+    return filtered.filter(p => {
       const passNum = (p.gate_pass_number || "").toLowerCase();
       const party = (p.contracts?.party_name || "").toLowerCase();
       const contractNum = (p.contracts?.contract_number || "").toLowerCase();
       const truck = (p.loading_details?.vehicle_number || "").toLowerCase();
       const transporter = (p.loading_details?.transport_name || "").toLowerCase();
       const lr = (p.loading_details?.lr_number || "").toLowerCase();
-      return passNum.includes(q) || party.includes(q) || contractNum.includes(q) || truck.includes(q) || transporter.includes(q) || lr.includes(q);
+      const pr = (p.contracts?.pr_no || p.contracts?.pr_number || "").toLowerCase();
+      const lot = (p.contracts?.lot_no || p.contracts?.lot_number || "").toLowerCase();
+      return passNum.includes(q) || party.includes(q) || contractNum.includes(q) || truck.includes(q) || transporter.includes(q) || lr.includes(q) || pr.includes(q) || lot.includes(q);
     });
-  }, [supabasePasses, activeModule, searchTerm]);
+  }, [supabasePasses, activeModule, searchTerm, dateFilter]);
 
   const handleDownloadPass = (p) => {
     const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
@@ -2573,11 +2584,35 @@ function GatePasses({ data, activeModule }) {
       title={`${moduleName} Gate Passes`}
       description={`Official gate passes generated exclusively for ${moduleName}. Each truck dispatch has a verified pass and weight record.`}
       action={
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {/* Today's Passes vs All Passes Filter */}
+          <div style={{ background: "#e2e8f0", padding: 3, borderRadius: 8, display: "flex", gap: 3 }}>
+            <button
+              onClick={() => setDateFilter("today")}
+              style={{
+                border: 0, padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 6, cursor: "pointer",
+                background: dateFilter === "today" ? "#0f172a" : "transparent",
+                color: dateFilter === "today" ? "#ffffff" : "#475569"
+              }}
+            >
+              📅 Today's Passes
+            </button>
+            <button
+              onClick={() => setDateFilter("all")}
+              style={{
+                border: 0, padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 6, cursor: "pointer",
+                background: dateFilter === "all" ? "#0f172a" : "transparent",
+                color: dateFilter === "all" ? "#ffffff" : "#475569"
+              }}
+            >
+              All Passes
+            </button>
+          </div>
+
           <div style={{ position: "relative" }}>
             <input
               type="text"
-              placeholder="🔍 Search Truck, Party, LR or Pass..."
+              placeholder={isNetCotton ? "🔍 Search Truck, Party, PR, Lot, Pass..." : "🔍 Search Truck, Party, LR or Pass..."}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               style={{
@@ -2614,7 +2649,7 @@ function GatePasses({ data, activeModule }) {
     <section className="panel">
       <div className="panel-heading">
         <div>
-          <h2>{moduleName} Gate Passes Register</h2>
+          <h2>{dateFilter === "today" ? `Today's ${moduleName} Gate Passes` : `${moduleName} Gate Passes Register`}</h2>
           <p>Verified truck dispatches for {moduleName} ({displayedPasses.length} total pass{displayedPasses.length === 1 ? "" : "es"}{searchTerm ? ` matching "${searchTerm}"` : ""})</p>
         </div>
         <PackageCheck size={20}/>
@@ -2627,8 +2662,8 @@ function GatePasses({ data, activeModule }) {
       ) : !displayedPasses.length ? (
         <div className="empty-state">
           <PackageCheck size={28}/>
-          <strong>No gate passes found for {moduleName}</strong>
-          <span>Save Step 3 loading details on any {moduleName} contract to generate its gate pass.</span>
+          <strong>No gate passes found {dateFilter === "today" ? "issued today" : `for ${moduleName}`}</strong>
+          <span>{dateFilter === "today" ? "Switch to 'All Passes' to see historical records or dispatch a truck." : "Save Step 3 loading details on any contract to generate its gate pass."}</span>
           <button className="button primary" onClick={() => {
             const first = data.contracts.find(c => (c.module || "cotton_seed") === activeModule);
             if (first) navigate(`/contracts/${first.id}?step=3`);
@@ -2642,6 +2677,7 @@ function GatePasses({ data, activeModule }) {
               <tr>
                 <th>Gate Pass</th>
                 <th>Contract</th>
+                {isNetCotton && <th>PR / Lot No</th>}
                 <th>Party Name</th>
                 <th>Vehicle / Truck</th>
                 <th>Dispatched Qtl</th>
@@ -2666,6 +2702,12 @@ function GatePasses({ data, activeModule }) {
                       <strong>{contractObj.contract_number || "—"}</strong>
                       {contractObj.commodity && <small className="cell-sub">{contractObj.commodity}</small>}
                     </td>
+                    {isNetCotton && (
+                      <td data-label="PR / Lot No">
+                        <div><strong>PR:</strong> {contractObj.pr_no || contractObj.pr_number || "—"}</div>
+                        <small className="cell-sub"><strong>Lot:</strong> {contractObj.lot_no || contractObj.lot_number || "—"}</small>
+                      </td>
+                    )}
                     <td data-label="Party Name">
                       <span className="party-cell" style={{ fontWeight: 600, color: "#0f172a" }}>
                         {contractObj.party_name || "—"}
@@ -2712,6 +2754,7 @@ function PartiesPage({ data, activeModule }) {
   const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
   const [filterMode, setFilterMode] = useState("current"); // "current" | "all"
   const [dbParties, setDbParties] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -2834,6 +2877,7 @@ function PartiesPage({ data, activeModule }) {
                 <th>GST Number</th>
                 <th>Contact Number</th>
                 <th>Address</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -2855,6 +2899,16 @@ function PartiesPage({ data, activeModule }) {
                   <td data-label="GST Number">{p.gst_number || "—"}</td>
                   <td data-label="Contact Number">{p.contact_number || "—"}</td>
                   <td data-label="Address">{p.address || "—"}</td>
+                  <td data-label="Action">
+                    <button
+                      className="button primary"
+                      style={{ fontSize: 11, padding: "5px 10px", whiteSpace: "nowrap" }}
+                      onClick={() => navigate(`/contracts/new?party=${encodeURIComponent(p.name)}`)}
+                      title={`Generate new contract for ${p.name}`}
+                    >
+                      <FilePlus2 size={12}/> + New Contract
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
