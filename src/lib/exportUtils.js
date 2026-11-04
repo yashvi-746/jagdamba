@@ -71,3 +71,4 @@ export function restoreFullBackup(file, onSuccess, onError) {
   };
   reader.readAsText(file);
 }
+

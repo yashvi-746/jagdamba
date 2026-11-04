@@ -27,3 +27,4 @@ export function convertCandyToQuintal(ratePerCandy) {
   const maundRate = Math.round(candyRate / 17.78);
   return { qtlRate, maundRate };
 }
+
