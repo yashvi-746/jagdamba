@@ -11,6 +11,7 @@ import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import { getOfflineQueue, syncOfflineQueue } from "./lib/offlineSync";
 import { generateContractPdf, generateGatePassPdf, printGatePassSlip, generatePartyStatementPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
 import { exportToCsv, exportFullBackup, restoreFullBackup } from "./lib/exportUtils";
+import { formatQtl, formatINR } from "./lib/formatters";
 import DailyPurchasePage from "./components/DailyPurchasePage";
 import TriplicateBillingPage from "./components/TriplicateBillingPage";
 import ProcurementReportsPage from "./components/ProcurementReportsPage";
@@ -519,6 +520,30 @@ export default function App() {
           <span>© {new Date().getFullYear()} Shree Jagdamba — {moduleName} System</span>
           <span><span className="status-dot"/> Exact 4-Step Contract & Gate Pass Workflow</span>
         </footer>
+
+        {/* Mobile Thumb-Zone Bottom Navigation Bar (<768px) */}
+        <nav className="mobile-bottom-nav">
+          <NavLink to="/" className={({ isActive }) => `bottom-nav-link ${isActive ? "active" : ""}`} end>
+            <LayoutDashboard size={18} />
+            <span>Home</span>
+          </NavLink>
+          <NavLink to="/contracts" className={({ isActive }) => `bottom-nav-link ${isActive ? "active" : ""}`}>
+            <FileText size={18} />
+            <span>Contracts</span>
+          </NavLink>
+          <NavLink to="/loading" className={({ isActive }) => `bottom-nav-link ${isActive ? "active" : ""}`}>
+            <Truck size={18} />
+            <span>Loading</span>
+          </NavLink>
+          <NavLink to="/gate-passes" className={({ isActive }) => `bottom-nav-link ${isActive ? "active" : ""}`}>
+            <PackageCheck size={18} />
+            <span>Passes</span>
+          </NavLink>
+          <NavLink to="/triplicate-billing" className={({ isActive }) => `bottom-nav-link ${isActive ? "active" : ""}`}>
+            <Receipt size={18} />
+            <span>Billing</span>
+          </NavLink>
+        </nav>
 
         {/* Global Floating Toast Container */}
         {toasts.length > 0 && (
@@ -1462,8 +1487,9 @@ function ContractForm({ data, activeModule }) {
                   <Field label="4. GST NUMBER">
                     <input
                       ref={el => (contractRefs.current["gst_number"] = el)}
+                      autoCapitalize="characters"
                       value={form.gst_number}
-                      onChange={e => set("gst_number", e.target.value)}
+                      onChange={e => set("gst_number", e.target.value.toUpperCase())}
                       onKeyDown={e => handleContractKeyDown(e, "gst_number")}
                       placeholder="GST Number"
                     />
@@ -1481,6 +1507,7 @@ function ContractForm({ data, activeModule }) {
                   <Field label="6. CONTACT NO.">
                     <input
                       ref={el => (contractRefs.current["contact_number"] = el)}
+                      inputMode="tel"
                       value={form.contact_number}
                       onChange={e => set("contact_number", e.target.value)}
                       onKeyDown={e => handleContractKeyDown(e, "contact_number")}
@@ -1555,6 +1582,7 @@ function ContractForm({ data, activeModule }) {
                     <input
                       ref={el => (contractRefs.current["rate_per_candy"] = el)}
                       type="number"
+                      inputMode="numeric"
                       min="0"
                       step="1"
                       required
@@ -1628,8 +1656,9 @@ function ContractForm({ data, activeModule }) {
                   <Field label="4. GST NUMBER">
                     <input
                       ref={el => (contractRefs.current["gst_number"] = el)}
+                      autoCapitalize="characters"
                       value={form.gst_number}
-                      onChange={e => set("gst_number", e.target.value)}
+                      onChange={e => set("gst_number", e.target.value.toUpperCase())}
                       onKeyDown={e => handleContractKeyDown(e, "gst_number")}
                       placeholder="GST Number"
                     />
@@ -1647,6 +1676,7 @@ function ContractForm({ data, activeModule }) {
                   <Field label="6. CONTACT NO.">
                     <input
                       ref={el => (contractRefs.current["contact_number"] = el)}
+                      inputMode="tel"
                       value={form.contact_number}
                       onChange={e => set("contact_number", e.target.value)}
                       onKeyDown={e => handleContractKeyDown(e, "contact_number")}
@@ -1693,6 +1723,7 @@ function ContractForm({ data, activeModule }) {
                     <input
                       ref={el => (contractRefs.current["rate_per_quintal"] = el)}
                       type="number"
+                      inputMode="decimal"
                       min="0"
                       step="0.01"
                       required
@@ -2385,8 +2416,9 @@ function ContractDetail({ data }) {
                   <input
                     ref={el => (loadingRefs.current["vehicle_number"] = el)}
                     required
+                    autoCapitalize="characters"
                     value={loading.vehicle_number || ""}
-                    onChange={e => setLoading({...loading, vehicle_number: e.target.value})}
+                    onChange={e => setLoading({...loading, vehicle_number: e.target.value.toUpperCase()})}
                     onKeyDown={e => handleLoadingKeyDown(e, "vehicle_number")}
                     placeholder="e.g. GJ 06 AB 1234"
                   />
@@ -2395,6 +2427,7 @@ function ContractDetail({ data }) {
                   <input
                     ref={el => (loadingRefs.current["net_weight_quintals"] = el)}
                     type="number"
+                    inputMode="decimal"
                     min="0.01"
                     step="0.01"
                     required
