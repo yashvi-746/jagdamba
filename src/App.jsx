@@ -2139,7 +2139,37 @@ function ContractDetail({ data }) {
               <input required value={loading.vehicle_number || ""} onChange={e => setLoading({...loading, vehicle_number: e.target.value})} placeholder="e.g. GJ 06 AB 1234"/>
             </Field>
             <Field label={`2. Net Weight quintals (Max remaining: ${remainingBalanceQty.toFixed(2)} Qtl)`} required>
-              <input type="number" min="0.01" step="0.01" required value={loading.net_weight_quintals || ""} onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})} placeholder={`e.g. ${remainingBalanceQty > 0 ? remainingBalanceQty : 100}`}/>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  value={loading.net_weight_quintals || ""}
+                  onChange={e => setLoading({...loading, net_weight_quintals: e.target.value})}
+                  placeholder={`e.g. ${remainingBalanceQty > 0 ? remainingBalanceQty : 100}`}
+                  style={{
+                    borderColor: Number(loading.net_weight_quintals) > remainingBalanceQty ? "#ef4444" : undefined,
+                    flex: 1
+                  }}
+                />
+                {remainingBalanceQty > 0 && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    style={{ whiteSpace: "nowrap", padding: "8px 12px", fontSize: 11, fontWeight: 700 }}
+                    onClick={() => setLoading({...loading, net_weight_quintals: remainingBalanceQty})}
+                    title="Click to automatically fill full remaining quantity"
+                  >
+                    ⚡ Fill Remaining ({remainingBalanceQty.toFixed(2)} Qtl)
+                  </button>
+                )}
+              </div>
+              {Number(loading.net_weight_quintals) > remainingBalanceQty && (
+                <small style={{ color: "#ef4444", fontWeight: 600, display: "block", marginTop: 4 }}>
+                  ⚠️ Warning: Weight ({loading.net_weight_quintals} Qtl) exceeds remaining balance ({remainingBalanceQty.toFixed(2)} Qtl).
+                </small>
+              )}
             </Field>
             <Field label="3. Driver license no." required>
               <input required value={loading.driver_license_number || ""} onChange={e => setLoading({...loading, driver_license_number: e.target.value})} placeholder="Driver license number"/>
@@ -2313,6 +2343,7 @@ function GatePasses({ data, activeModule }) {
   const [supabasePasses, setSupabasePasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -2384,8 +2415,20 @@ function GatePasses({ data, activeModule }) {
 
     // Sort descending by created_at
     list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    return list;
-  }, [supabasePasses, activeModule]);
+
+    // Optional quick search filtering
+    if (!searchTerm.trim()) return list;
+    const q = searchTerm.toLowerCase();
+    return list.filter(p => {
+      const passNum = (p.gate_pass_number || "").toLowerCase();
+      const party = (p.contracts?.party_name || "").toLowerCase();
+      const contractNum = (p.contracts?.contract_number || "").toLowerCase();
+      const truck = (p.loading_details?.vehicle_number || "").toLowerCase();
+      const transporter = (p.loading_details?.transport_name || "").toLowerCase();
+      const lr = (p.loading_details?.lr_number || "").toLowerCase();
+      return passNum.includes(q) || party.includes(q) || contractNum.includes(q) || truck.includes(q) || transporter.includes(q) || lr.includes(q);
+    });
+  }, [supabasePasses, activeModule, searchTerm]);
 
   const handleDownloadPass = (p) => {
     const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
@@ -2405,12 +2448,50 @@ function GatePasses({ data, activeModule }) {
       eyebrow={`STEP 04 / ${moduleName.toUpperCase()}`}
       title={`${moduleName} Gate Passes`}
       description={`Official gate passes generated exclusively for ${moduleName}. Each truck dispatch has a verified pass and weight record.`}
+      action={
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ position: "relative" }}>
+            <input
+              type="text"
+              placeholder="🔍 Search Truck, Party, LR or Pass..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{
+                padding: "8px 14px",
+                fontSize: 12,
+                borderRadius: 8,
+                border: "1.5px solid #cbd5e1",
+                minWidth: 240,
+                outline: "none"
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#94a3b8",
+                  fontSize: 14
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      }
     />
     <section className="panel">
       <div className="panel-heading">
         <div>
           <h2>{moduleName} Gate Passes Register</h2>
-          <p>Verified truck dispatches for {moduleName} ({displayedPasses.length} total pass{displayedPasses.length === 1 ? "" : "es"})</p>
+          <p>Verified truck dispatches for {moduleName} ({displayedPasses.length} total pass{displayedPasses.length === 1 ? "" : "es"}{searchTerm ? ` matching "${searchTerm}"` : ""})</p>
         </div>
         <PackageCheck size={20}/>
       </div>
