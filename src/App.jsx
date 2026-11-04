@@ -89,38 +89,60 @@ function useContracts(offlineOverride = false) {
   };
 
   async function refresh() {
+    // 1. Load locally saved contracts
+    let localSaved = [];
+    try {
+      const saved = localStorage.getItem("seedledger_contracts_v3");
+      if (saved) localSaved = JSON.parse(saved);
+    } catch (e) {
+      localSaved = [];
+    }
+
     if (demoMode) {
-      try {
-        const saved = localStorage.getItem("seedledger_contracts_v3");
-        if (saved) setContracts(JSON.parse(saved));
-        else setContracts([]);
-      } catch (e) {
-        setContracts([]);
-      }
+      setContracts(localSaved);
       return;
     }
+
     try {
       const { data: remoteData, error: queryError } = await supabase
         .from("contracts").select("*").order("created_at", { ascending: false });
+
       if (queryError) {
-        const saved = localStorage.getItem("seedledger_contracts_v3");
-        if (saved) setContracts(JSON.parse(saved));
-        else setContracts([]);
+        setContracts(localSaved);
         setError(queryError.message);
       } else if (remoteData) {
-        setContracts(remoteData);
+        // Merge remote contracts with local contracts so offline/local contracts (like local- or offline-) are never lost
+        const remoteIds = new Set(remoteData.map(c => c.id));
+        const nonDuplicateLocal = localSaved.filter(c => !remoteIds.has(c.id));
+        const merged = [...remoteData, ...nonDuplicateLocal];
+
+        // Also ensure any Net Cotton / Cotton Seed distinction is normalized
+        const normalized = merged.map(c => {
+          let mod = c.module;
+          if (!mod) {
+            if (c.commodity === "COTTON BALES" || c.pr_number || c.rate_per_candy || c.lot_number) {
+              mod = "net_cotton";
+            } else {
+              mod = "cotton_seed";
+            }
+          }
+          return { ...c, module: mod };
+        });
+
+        setContracts(normalized);
+        try {
+          localStorage.setItem("seedledger_contracts_v3", JSON.stringify(normalized));
+        } catch (e) {}
       }
     } catch (err) {
-      const saved = localStorage.getItem("seedledger_contracts_v3");
-      if (saved) setContracts(JSON.parse(saved));
-      else setContracts([]);
+      setContracts(localSaved);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { if (demoMode) refresh(); }, []);
-  return { contracts, setContracts: demoMode ? setContractsAndPersist : setContracts, refresh, loading, error, demoMode };
+  useEffect(() => { refresh(); }, []);
+  return { contracts, setContracts: setContractsAndPersist, refresh, loading, error, demoMode };
 }
 
 export default function App() {
@@ -928,6 +950,18 @@ function ContractForm({ data, activeModule }) {
       };
       data.setContracts(old => [offlineContract, ...old]);
       generateContractPdf(offlineContract);
+
+      // Save party into Supabase parties table or local fallback so it appears in Parties Directory
+      if (finalForm.party_name) {
+        supabase.from("parties").insert({
+          name: finalForm.party_name,
+          gst_number: finalForm.gst_number || null,
+          address: finalForm.party_address || finalForm.delivery_address || null,
+          contact_number: finalForm.contact_number || null,
+          created_by: user?.id
+        }).catch(() => {});
+      }
+
       navigate(`/contracts/${offlineContract.id}?step=2`);
       setSaving(false);
       return;
@@ -936,6 +970,18 @@ function ContractForm({ data, activeModule }) {
     const completeContract = { ...finalForm, ...inserted };
     data.setContracts(old => [completeContract, ...old]);
     generateContractPdf(completeContract);
+
+    // Save party into Supabase parties table
+    if (finalForm.party_name) {
+      supabase.from("parties").insert({
+        name: finalForm.party_name,
+        gst_number: finalForm.gst_number || null,
+        address: finalForm.party_address || finalForm.delivery_address || null,
+        contact_number: finalForm.contact_number || null,
+        created_by: user?.id
+      }).catch(() => {});
+    }
+
     await data.refresh();
     navigate(`/contracts/${inserted.id}?step=2`);
     setSaving(false);
@@ -2359,30 +2405,150 @@ function GatePasses({ data, activeModule }) {
 function PartiesPage({ data, activeModule }) {
   const isNetCotton = activeModule === "net_cotton";
   const moduleName = isNetCotton ? "Net Cotton" : "Cotton Seed";
-  const modContracts = data.contracts.filter(c => (c.module || "cotton_seed") === activeModule);
-  const demoParties = [...new Map(modContracts.filter(c => c.party_name).map(c => [c.party_name, { name: c.party_name, gst_number: c.gst_number, contact_number: c.contact_number, address: c.party_address }])).values()];
+  const [filterMode, setFilterMode] = useState("current"); // "current" | "all"
+  const [dbParties, setDbParties] = useState([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    supabase
+      .from("parties")
+      .select("*")
+      .order("name", { ascending: true })
+      .then(({ data: rows }) => {
+        if (rows) setDbParties(rows);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Consolidate parties from:
+  // 1. Contracts in active data.contracts (both online and offline/local)
+  // 2. Local gate passes (seedledger_gate_passes_v3)
+  // 3. Supabase parties table
+  const partyList = useMemo(() => {
+    const map = new Map();
+
+    // Add Supabase parties table entries
+    dbParties.forEach(p => {
+      if (p.name) {
+        map.set(p.name.trim().toLowerCase(), {
+          name: p.name,
+          gst_number: p.gst_number,
+          contact_number: p.contact_number,
+          address: p.address,
+          module: "all"
+        });
+      }
+    });
+
+    // Add parties from local gate passes
+    try {
+      const passes = JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]");
+      passes.forEach(p => {
+        const c = p.contracts;
+        if (c?.party_name) {
+          const key = c.party_name.trim().toLowerCase();
+          const existing = map.get(key) || {};
+          map.set(key, {
+            name: c.party_name,
+            gst_number: c.gst_number || existing.gst_number || "",
+            contact_number: c.contact_number || existing.contact_number || "",
+            address: c.party_address || c.delivery_address || existing.address || "",
+            module: c.module || p.module || "cotton_seed"
+          });
+        }
+      });
+    } catch (e) {}
+
+    // Add parties from all contracts
+    (data.contracts || []).forEach(c => {
+      if (c.party_name) {
+        const key = c.party_name.trim().toLowerCase();
+        const existing = map.get(key) || {};
+        map.set(key, {
+          name: c.party_name,
+          gst_number: c.gst_number || existing.gst_number || "",
+          contact_number: c.contact_number || existing.contact_number || "",
+          address: c.party_address || c.delivery_address || existing.address || "",
+          module: c.module || "cotton_seed"
+        });
+      }
+    });
+
+    const all = Array.from(map.values());
+    if (filterMode === "current") {
+      return all.filter(p => p.module === activeModule || p.module === "all");
+    }
+    return all;
+  }, [dbParties, data.contracts, activeModule, filterMode]);
 
   return <>
-    <PageHeading eyebrow="DIRECTORY" title="Parties" description={`Party name, GST number, contact number, and address records from ${moduleName} contracts.`}/>
+    <PageHeading
+      eyebrow="DIRECTORY"
+      title="Parties Directory"
+      description={`Party name, GST number, contact number, and address records for ${moduleName} and across all contracts.`}
+      action={
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className={`button ${filterMode === "current" ? "primary" : "secondary"}`}
+            style={{ fontSize: 12, padding: "6px 12px" }}
+            onClick={() => setFilterMode("current")}
+          >
+            {moduleName} ({partyList.length})
+          </button>
+          <button
+            className={`button ${filterMode === "all" ? "primary" : "secondary"}`}
+            style={{ fontSize: 12, padding: "6px 12px" }}
+            onClick={() => setFilterMode("all")}
+          >
+            All Parties
+          </button>
+        </div>
+      }
+    />
     <section className="panel">
       <div className="panel-heading">
-        <div><h2>Party Directory</h2><p>Parties registered across {moduleName} contracts</p></div>
+        <div>
+          <h2>Registered Parties</h2>
+          <p>{partyList.length} verified party/parties recorded</p>
+        </div>
         <Users size={19}/>
       </div>
-      {!demoParties.length ? (
-        <div className="empty-state"><Users size={25}/><strong>No party records yet</strong><span>Party details will be listed here as you add them to Step 1 contracts.</span></div>
+      {!partyList.length ? (
+        <div className="empty-state">
+          <Users size={28}/>
+          <strong>No party records found for {filterMode === "current" ? moduleName : "active directory"}</strong>
+          <span>Party details are automatically saved when you create a contract in Step 1.</span>
+        </div>
       ) : (
         <div className="table-scroll">
           <table className="data-table">
             <thead>
-              <tr><th>Party name</th><th>GST number</th><th>Contact</th><th>Address</th></tr>
+              <tr>
+                <th>Party Name</th>
+                <th>Module</th>
+                <th>GST Number</th>
+                <th>Contact Number</th>
+                <th>Address</th>
+              </tr>
             </thead>
             <tbody>
-              {demoParties.map((p, i) => (
+              {partyList.map((p, i) => (
                 <tr key={i}>
-                  <td data-label="Party Name"><strong>{p.name}</strong></td>
+                  <td data-label="Party Name"><strong style={{ color: "#0f172a" }}>{p.name}</strong></td>
+                  <td data-label="Module">
+                    <span style={{
+                      padding: "2px 8px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: p.module === "net_cotton" ? "#fef3c7" : "#e0e7ff",
+                      color: p.module === "net_cotton" ? "#92400e" : "#3730a3"
+                    }}>
+                      {p.module === "net_cotton" ? "Net Cotton" : p.module === "all" ? "All" : "Cotton Seed"}
+                    </span>
+                  </td>
                   <td data-label="GST Number">{p.gst_number || "—"}</td>
-                  <td data-label="Contact">{p.contact_number || "—"}</td>
+                  <td data-label="Contact Number">{p.contact_number || "—"}</td>
                   <td data-label="Address">{p.address || "—"}</td>
                 </tr>
               ))}
