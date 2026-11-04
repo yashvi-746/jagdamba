@@ -466,14 +466,14 @@ export default function TriplicateBillingPage() {
               </div>
 
               {/* Quick Select Existing Farmer */}
-              <div style={{ marginBottom: 20, background: "#f8fafc", padding: 14, borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 6 }}>
+              <div style={{ marginBottom: 20, background: "#f8fafc", padding: 16, borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                <label style={{ fontSize: "var(--font-size-label)", fontWeight: 700, color: "var(--navy-800)", display: "block", marginBottom: 8, letterSpacing: "0.2px" }}>
                   Quick Select Existing Farmer from Registry:
                 </label>
                 <select
                   value={selectedFarmerId}
                   onChange={(e) => handleSelectFarmer(e.target.value)}
-                  style={{ width: "100%", height: 38, borderRadius: 6, border: "1px solid #cbd5e1", padding: "0 10px", fontSize: 12 }}
+                  style={{ width: "100%", height: 42, borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border-light)", padding: "0 14px", fontSize: "var(--font-size-body)", color: "var(--navy-950)", background: "#ffffff" }}
                 >
                   <option value="">-- Or enter new farmer profile below --</option>
                   {farmers.map(f => (
@@ -512,7 +512,7 @@ export default function TriplicateBillingPage() {
               <form onSubmit={handleSaveFarmer}>
                 <div className="field-grid">
                   <div className="field">
-                    <span>Farmer Name <i>*</i></span>
+                    <label>Farmer Name <span className="req">*</span></label>
                     <input
                       ref={el => (step1Refs.current["farmer_name"] = el)}
                       type="text"
@@ -525,7 +525,7 @@ export default function TriplicateBillingPage() {
                   </div>
 
                   <div className="field">
-                    <span>Village / Residence <i>*</i></span>
+                    <label>Village / Residence <span className="req">*</span></label>
                     <input
                       ref={el => (step1Refs.current["village"] = el)}
                       type="text"
@@ -538,10 +538,11 @@ export default function TriplicateBillingPage() {
                   </div>
 
                   <div className="field">
-                    <span>Vehicle Number</span>
+                    <label>Vehicle Number</label>
                     <input
                       ref={el => (step1Refs.current["vehicle_number"] = el)}
                       type="text"
+                      autoCapitalize="characters"
                       placeholder="e.g. GJ 06 AA 1101"
                       value={farmerForm.vehicle_number}
                       onChange={(e) => setFarmerForm({ ...farmerForm, vehicle_number: e.target.value })}
@@ -550,10 +551,11 @@ export default function TriplicateBillingPage() {
                   </div>
 
                   <div className="field">
-                    <span>Contact Number</span>
+                    <label>Contact Number</label>
                     <input
                       ref={el => (step1Refs.current["contact_number"] = el)}
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
                       placeholder="e.g. +91 98250 11001"
                       value={farmerForm.contact_number}
                       onChange={(e) => setFarmerForm({ ...farmerForm, contact_number: e.target.value })}
@@ -562,7 +564,7 @@ export default function TriplicateBillingPage() {
                   </div>
 
                   <div className="field">
-                    <span>Land Record (7/12)</span>
+                    <label>Land Record (7/12)</label>
                     <input
                       ref={el => (step1Refs.current["land_record"] = el)}
                       type="text"
@@ -574,10 +576,11 @@ export default function TriplicateBillingPage() {
                   </div>
 
                   <div className="field">
-                    <span>Aadhaar Card Number</span>
+                    <label>Aadhaar Card Number</label>
                     <input
                       ref={el => (step1Refs.current["aadhaar_card_number"] = el)}
                       type="text"
+                      inputMode="numeric"
                       placeholder="e.g. 2345 6789 0101"
                       value={farmerForm.aadhaar_card_number}
                       onChange={(e) => setFarmerForm({ ...farmerForm, aadhaar_card_number: e.target.value })}

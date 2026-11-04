@@ -6,13 +6,13 @@
 /* Main Enterprise Procurement Card */
 .modern-procurement-card {
   background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 12px rgba(15, 23, 42, 0.02);
   margin-bottom: 24px;
   overflow: hidden;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #1E293B;
+  font-family: var(--font-main);
+  color: var(--navy-950);
 }
 
 /* Factory Brand Strip (Replaces fake Windows title bar) */
@@ -151,25 +151,28 @@
 }
 
 .entity-field label {
-  font-size: 10px;
+  font-size: var(--font-size-label);
   font-weight: 600;
-  color: #475569;
+  color: var(--navy-800);
+  letter-spacing: 0.2px;
 }
 
 .entity-field input, .entity-field select {
-  height: 32px;
-  padding: 4px 8px;
-  font-size: 11px;
-  border: 1px solid #CBD5E1;
-  border-radius: 6px;
+  height: 40px;
+  padding: 8px 12px;
+  font-size: var(--font-size-body);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
   background: #FFFFFF;
   font-weight: 500;
+  color: var(--navy-950);
+  transition: all 0.15s ease;
 }
 
 .entity-field input:focus, .entity-field select:focus {
-  border-color: #3B82F6;
+  border-color: var(--theme-accent, #2563eb);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 /* Consignment Metadata Bar */
@@ -178,31 +181,39 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   padding: 14px 20px;
-  background: #F1F5F9;
-  border-bottom: 1px solid #CBD5E1;
+  background: #F8FAFC;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .meta-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .meta-item label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--navy-800);
+  letter-spacing: 0.2px;
 }
 
 .meta-item input, .meta-item select {
-  height: 32px;
-  padding: 4px 8px;
-  font-size: 11px;
-  border: 1px solid #CBD5E1;
-  border-radius: 6px;
+  height: 40px;
+  padding: 8px 12px;
+  font-size: var(--font-size-body);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
   background: #FFFFFF;
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--navy-950);
+  transition: all 0.15s ease;
+}
+
+.meta-item input:focus, .meta-item select:focus {
+  border-color: var(--theme-accent, #2563eb);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 /* 6-Column Weighment Strip (Exact Page 4 Formula Container) */
@@ -704,27 +715,27 @@
 }
 
 .farmer-field-box label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #64748B;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--navy-800);
+  letter-spacing: 0.2px;
 }
 
 .farmer-input {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid #CBD5E1;
-  border-radius: 6px;
-  font-size: 13px;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-body);
   background: #FFFFFF;
-  color: #0F172A;
+  color: var(--navy-950);
+  transition: all 0.15s ease;
 }
 
 .farmer-input:focus {
-  border-color: #3B82F6;
+  border-color: var(--theme-accent, #2563eb);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .farmer-field-box.highlight-field .farmer-input {
@@ -883,45 +894,49 @@
 .report-filter-field {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: var(--font-size-label);
 }
 
 .report-filter-field .filter-label {
-  font-weight: 700;
-  color: #475569;
+  font-weight: 600;
+  color: var(--navy-800);
 }
 
 .filter-input {
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid #CBD5E1;
-  font-size: 11px;
+  height: 38px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-light);
+  font-size: var(--font-size-data);
+  color: var(--navy-950);
   background: #FFFFFF;
 }
 
 .filter-select {
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid #CBD5E1;
-  font-size: 11px;
-  font-weight: 700;
+  height: 38px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-light);
+  font-size: var(--font-size-data);
+  font-weight: 600;
+  color: var(--navy-950);
   background: #FFFFFF;
 }
 
 .report-filter-field.search-field {
   background: #FFFFFF;
-  border: 1px solid #CBD5E1;
-  border-radius: 6px;
-  padding: 0 8px;
-  height: 32px;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  height: 38px;
 }
 
 .filter-input.search-input {
   border: none;
   padding: 0 4px;
-  width: 140px;
+  width: 150px;
   outline: none;
+  font-size: var(--font-size-data);
+  color: var(--navy-950);
 }
