@@ -879,7 +879,9 @@ function ContractTable({ contracts, onOpen, isNetCotton = false, compact = false
                 ) : (
                   <td data-label="Packing"><span className="packing-tag">{c.packing_type || "LOOSE"}</span></td>
                 )}
-                <td data-label="Status"><StatusBadge status={c.status}/></td>
+                <td data-label="Status">
+                  <StatusBadge status={c.status} remaining={c.remaining_quantity} total={qNum}/>
+                </td>
                 {!compact && <td><ArrowRight size={16} className="row-arrow"/></td>}
               </tr>
             );
@@ -890,8 +892,15 @@ function ContractTable({ contracts, onOpen, isNetCotton = false, compact = false
   );
 }
 
-function StatusBadge({ status }) {
-  const label = ({ draft: "Draft", pending: "Pending confirmation", confirmed: "Confirmed", loading: "Loading", completed: "Completed" })[status] || status || "Draft";
+function StatusBadge({ status, remaining, total }) {
+  if (status === "partially_dispatched" || (remaining != null && remaining > 0 && total && remaining < total)) {
+    return (
+      <span className="status-badge" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+        <i style={{ background: "#d97706" }}/>Partially Dispatched ({remaining != null ? `${remaining} Qtl Left` : "Split"})
+      </span>
+    );
+  }
+  const label = ({ draft: "Draft", pending: "Pending confirmation", confirmed: "Confirmed", loading: "Loading", completed: "Completed", partially_dispatched: "Partially Dispatched" })[status] || status || "Draft";
   return <span className={`status-badge status-${status || "draft"}`}><i/>{label}</span>;
 }
 
@@ -1672,9 +1681,26 @@ function ContractDetail({ data }) {
   const loadDispatches = () => {
     if (!contract) return;
     try {
-      const all = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]");
-      const matched = all.filter(p => String(p.contract_id) === String(contract.id));
-      setContractDispatches(matched);
+      const all = [
+        ...JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]"),
+        ...JSON.parse(localStorage.getItem("seedledger_gate_passes_v3") || "[]")
+      ];
+      // Match by contract.id OR contract_number to prevent any ID mismatch between local and DB
+      const matched = all.filter(p =>
+        (p.contract_id && String(p.contract_id) === String(contract.id)) ||
+        (p.contracts?.contract_number && contract.contract_number && p.contracts.contract_number === contract.contract_number)
+      );
+
+      // Deduplicate by gate_pass_number
+      const unique = [];
+      const seen = new Set();
+      for (const m of matched) {
+        if (!seen.has(m.gate_pass_number)) {
+          seen.add(m.gate_pass_number);
+          unique.push(m);
+        }
+      }
+      setContractDispatches(unique);
     } catch (e) {
       setContractDispatches([]);
     }
@@ -1775,7 +1801,7 @@ function ContractDetail({ data }) {
 
     // 2. Update contract in application state
     data.setContracts(old => old.map(c => {
-      if (String(c.id) === String(contract.id)) {
+      if (String(c.id) === String(contract.id) || (c.contract_number && c.contract_number === contract.contract_number)) {
         return {
           ...c,
           status: newContractStatus,
