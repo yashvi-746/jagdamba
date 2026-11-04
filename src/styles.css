@@ -1610,3 +1610,115 @@ button:disabled {
   outline: none;
   cursor: pointer;
 }
+
+
+/* 80mm POS Thermal Receipt Print Styling */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 3mm;
+  }
+
+  body.thermal-print-mode {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}
+
+/* Floating Action Button (FAB) for Mobile */
+.mobile-fab-container {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-fab-container {
+    display: flex;
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    z-index: 999;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .mobile-fab-main {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #0f172a;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.4);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-fab-main:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-fab-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .mobile-fab-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+  }
+}
+
+
+/* Module Visual Color Themes */
+.app-shell.module-cotton_seed {
+  --primary: #059669;
+  --primary-hover: #047857;
+  --theme-accent: #059669;
+}
+
+.app-shell.module-cotton_seed .topbar {
+  border-bottom: 2px solid #059669;
+}
+
+.app-shell.module-cotton_seed .crumb-workspace {
+  color: #059669 !important;
+  font-weight: 700;
+}
+
+.app-shell.module-net_cotton {
+  --primary: #d97706;
+  --primary-hover: #b45309;
+  --theme-accent: #d97706;
+}
+
+.app-shell.module-net_cotton .topbar {
+  border-bottom: 2px solid #d97706;
+}
+
+.app-shell.module-net_cotton .crumb-workspace {
+  color: #d97706 !important;
+  font-weight: 700;
+}

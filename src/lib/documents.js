@@ -803,3 +803,129 @@ export function generateTriplicateBillPdf(bill) {
   pdf.save(`Triplicate-Bill-${bill.bill_no || "draft"}.pdf`);
 }
 
+
+
+// 5. Consolidated Party Statement / Commercial Ledger PDF
+export function generatePartyStatementPdf(partyName, partyContracts = [], partyPasses = []) {
+  const pdf = new jsPDF("p", "mm", "a4");
+  const w = pdf.internal.pageSize.getWidth();
+  let y = 14;
+
+  drawHeader(pdf, "COMMERCIAL DISPATCH & CONTRACT STATEMENT");
+  y = 48;
+
+  pdf.setFillColor(241, 245, 249);
+  pdf.roundedRect(14, y, w - 28, 22, 2, 2, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(11);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text(`Party: ${partyName}`, 18, y + 7);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.setTextColor(71, 85, 105);
+  pdf.text(`Statement Date: ${new Date().toLocaleDateString("en-IN")}`, 18, y + 14);
+  pdf.text(`Total Contracts Signed: ${partyContracts.length}`, 120, y + 7);
+  pdf.text(`Total Dispatches Recorded: ${partyPasses.length}`, 120, y + 14);
+  y += 28;
+
+  // Contracts Section
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text("1. Signed Contracts Summary", 14, y);
+  y += 5;
+
+  let totalContractedQty = 0;
+  partyContracts.forEach((c) => {
+    const rawQty = String(c.quantity || "").match(/[\d.]+/);
+    totalContractedQty += rawQty ? parseFloat(rawQty[0]) : 0;
+  });
+
+  pdf.setFillColor(226, 232, 240);
+  pdf.rect(14, y, w - 28, 6.5, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.5);
+  pdf.text("Contract No.", 16, y + 4.5);
+  pdf.text("Date", 50, y + 4.5);
+  pdf.text("Commodity", 80, y + 4.5);
+  pdf.text("Quantity", 125, y + 4.5);
+  pdf.text("Rate", 155, y + 4.5);
+  pdf.text("Status", 185, y + 4.5);
+  y += 7;
+
+  partyContracts.forEach((c) => {
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.text(String(c.contract_number || "Draft"), 16, y + 4);
+    pdf.text(String(c.contract_date || "-"), 50, y + 4);
+    pdf.text(String(c.commodity || "COTTON SEED"), 80, y + 4);
+    pdf.text(String(c.quantity || "-"), 125, y + 4);
+    pdf.text(c.rate_per_candy ? `Rs.${c.rate_per_candy}/Candy` : `Rs.${c.rate_per_quintal || 0}/Qtl`, 155, y + 4);
+    pdf.text(String(c.status || "confirmed"), 185, y + 4);
+    y += 5.5;
+  });
+
+  y += 6;
+  // Dispatches Section
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text("2. Truck Dispatches & Gate Clearances", 14, y);
+  y += 5;
+
+  let totalDispatchedQty = 0;
+  pdf.setFillColor(226, 232, 240);
+  pdf.rect(14, y, w - 28, 6.5, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.5);
+  pdf.text("Gate Pass", 16, y + 4.5);
+  pdf.text("Date", 48, y + 4.5);
+  pdf.text("Vehicle No.", 75, y + 4.5);
+  pdf.text("Net Weight", 115, y + 4.5);
+  pdf.text("Transporter", 145, y + 4.5);
+  pdf.text("LR No.", 182, y + 4.5);
+  y += 7;
+
+  partyPasses.forEach((p) => {
+    const l = p.loading_details || {};
+    const wt = Number(l.net_weight_quintals || 0);
+    totalDispatchedQty += wt;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.text(String(p.gate_pass_number || "-"), 16, y + 4);
+    pdf.text(p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "-", 48, y + 4);
+    pdf.text(String(l.vehicle_number || "-"), 75, y + 4);
+    pdf.text(`${wt.toFixed(2)} Qtl`, 115, y + 4);
+    pdf.text(String(l.transport_name || "-").slice(0, 18), 145, y + 4);
+    pdf.text(String(l.lr_number || "-"), 182, y + 4);
+    y += 5.5;
+  });
+
+  // Balance Summary Card
+  y += 8;
+  const pendingQty = Math.max(0, totalContractedQty - totalDispatchedQty);
+  pdf.setFillColor(248, 250, 252);
+  pdf.setDrawColor(203, 213, 225);
+  pdf.roundedRect(14, y, w - 28, 16, 2, 2, "FD");
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text(`Total Contracted: ${totalContractedQty.toFixed(2)} Qtl`, 20, y + 6);
+  pdf.text(`Total Dispatched: ${totalDispatchedQty.toFixed(2)} Qtl`, 80, y + 6);
+  pdf.setTextColor(pendingQty > 0 ? 180 : 22, pendingQty > 0 ? 83 : 163, pendingQty > 0 ? 9 : 74);
+  pdf.text(`Outstanding Balance: ${pendingQty.toFixed(2)} Qtl Pending`, 135, y + 6);
+
+  // Signatures
+  y += 28;
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
+  pdf.line(20, y, 70, y);
+  pdf.line(w - 70, y, w - 20, y);
+  pdf.text("Party Authorized Signatory", 24, y + 5);
+  pdf.text("For Shree Jagdamba Factory", w - 66, y + 5);
+
+  pdf.save(`Statement-${partyName.replace(/\s+/g, "_")}-${new Date().toISOString().slice(0, 10)}.pdf`);
+}

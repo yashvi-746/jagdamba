@@ -30,6 +30,7 @@ import {
   saveLocalTriplicateBills
 } from "../lib/farmerStore";
 import { generateTriplicateBillPdf } from "../lib/documents";
+import { exportToCsv } from "../lib/exportUtils";
 import { showAppToast } from "../App";
 
 const BUYER_DEFAULT = {
@@ -1220,6 +1221,38 @@ export default function TriplicateBillingPage() {
                   }}
                 />
               </div>
+
+              {bills.length > 0 && (
+                <button
+                  className="button secondary"
+                  onClick={() => {
+                    const exportRows = bills.map(b => ({
+                      "Bill No": b.bill_number || "",
+                      "Date": b.date || "",
+                      "Farmer Name": b.seller_name || "",
+                      "Village": b.village_name || b.seller_residence || "",
+                      "Vehicle No": b.vehicle_number || "",
+                      "Heap No": b.heap_number || "",
+                      "Gross Wt": b.gross_weight || "",
+                      "Tare Wt": b.tare_weight || "",
+                      "Net Weight": b.net_weight || "",
+                      "Rate": b.rate || "",
+                      "Gross Total": b.gross_total || "",
+                      "Net Amount": b.net_amount || "",
+                      "Payment Mode": b.payment_mode || "CASH"
+                    }));
+                    exportToCsv("Farmer_Triplicate_Bills", exportRows);
+                    showAppToast({
+                      type: "success",
+                      title: "📊 Excel Export Ready",
+                      message: `Exported ${exportRows.length} farmer triplicate bills to CSV/Excel.`
+                    });
+                  }}
+                  title="Export all bills to Excel / CSV"
+                >
+                  <FileText size={13} /> Export Excel
+                </button>
+              )}
 
               {bills.length > 0 && (
                 <button

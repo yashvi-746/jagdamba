@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import { getOfflineQueue, syncOfflineQueue } from "./lib/offlineSync";
-import { generateContractPdf, generateGatePassPdf, printGatePassSlip, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
+import { generateContractPdf, generateGatePassPdf, printGatePassSlip, generatePartyStatementPdf, COTTON_SEED_TERMS, NET_COTTON_TERMS } from "./lib/documents";
+import { exportToCsv, exportFullBackup, restoreFullBackup } from "./lib/exportUtils";
 import DailyPurchasePage from "./components/DailyPurchasePage";
 import TriplicateBillingPage from "./components/TriplicateBillingPage";
 import ProcurementReportsPage from "./components/ProcurementReportsPage";
@@ -269,8 +270,35 @@ export default function App() {
     "/procurement-reports": "Procurement & Heap Reports"
   })[location.pathname] || "Workspace";
 
+  const [fabOpen, setFabOpen] = useState(false);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell module-${activeModule}`}>
+      {/* Mobile Floating Action Button (FAB) */}
+      <div className="mobile-fab-container">
+        {fabOpen && (
+          <div className="mobile-fab-menu">
+            <NavLink to="/contracts/new" className="mobile-fab-item" onClick={() => setFabOpen(false)}>
+              <FilePlus2 size={16} color="#2563eb" /> + New Contract
+            </NavLink>
+            <NavLink to="/loading" className="mobile-fab-item" onClick={() => setFabOpen(false)}>
+              <Truck size={16} color="#059669" /> + Dispatch Truck
+            </NavLink>
+            <NavLink to="/triplicate-billing" className="mobile-fab-item" onClick={() => setFabOpen(false)}>
+              <Receipt size={16} color="#d97706" /> + Farmer Bill
+            </NavLink>
+          </div>
+        )}
+        <button
+          type="button"
+          className="mobile-fab-main"
+          onClick={() => setFabOpen(o => !o)}
+          title="Quick Actions"
+          aria-label="Quick Actions"
+        >
+          {fabOpen ? <X size={22}/> : <Plus size={24}/>}
+        </button>
+      </div>
       {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Close menu" />}
       <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`} style={{ overflowY: "auto" }}>
         <div className="brand">
@@ -337,6 +365,56 @@ export default function App() {
         </nav>
 
         <div className="sidebar-bottom">
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            <button
+              type="button"
+              className="button secondary"
+              style={{ fontSize: 11, padding: "5px 8px", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+              onClick={() => {
+                const ok = exportFullBackup();
+                if (ok) {
+                  showAppToast({
+                    type: "success",
+                    title: "💾 Full Backup Created",
+                    message: "Database snapshot downloaded successfully!"
+                  });
+                }
+              }}
+              title="Download entire factory data snapshot (contracts, passes, bills)"
+            >
+              <ArrowDownToLine size={13}/> Backup Data
+            </button>
+            <label
+              className="button secondary"
+              style={{ fontSize: 11, padding: "5px 8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              title="Restore factory database from JSON backup file"
+            >
+              Upload
+              <input
+                type="file"
+                accept=".json"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  restoreFullBackup(file, (restoredData) => {
+                    showAppToast({
+                      type: "success",
+                      title: "🟢 Database Restored",
+                      message: "Factory database restored! Reloading..."
+                    });
+                    setTimeout(() => window.location.reload(), 1200);
+                  }, (err) => {
+                    showAppToast({
+                      type: "error",
+                      title: "❌ Restore Failed",
+                      message: "Invalid backup JSON file."
+                    });
+                  });
+                }}
+              />
+            </label>
+          </div>
           <div className="secure-card"><ShieldCheck size={18}/><div><strong>{moduleName} Desk</strong><span>4-Step Contract & Gate Pass</span></div></div>
           <div className="profile-row"><div className="avatar">BO</div><div className="profile-copy"><strong>Broker Office</strong><span>Authorized</span></div><button className="icon-button" onClick={signOut} title="Sign out"><LogOut size={16}/></button></div>
         </div>
@@ -782,12 +860,44 @@ function ContractRegister({ data, activeModule }) {
     return filtered.slice(startIndex, startIndex + pageSize);
   }, [filtered, page, pageSize]);
 
+  const handleExportContracts = () => {
+    const exportRows = filtered.map(c => ({
+      "Contract Number": c.contract_number || "Draft",
+      "Date": c.contract_date || "",
+      "Module": c.module === "net_cotton" ? "Net Cotton" : "Cotton Seed",
+      "Commodity": c.commodity || (isNetCotton ? "COTTON BALES" : "COTTON SEED"),
+      "Party Name": c.party_name || "",
+      "GSTIN": c.gst_number || "",
+      "Quantity": c.quantity || "",
+      "Rate": isNetCotton ? `${c.rate_per_candy || 0}/Candy` : `${c.rate_per_quintal || 0}/Qtl`,
+      "GST Rate": `${c.gst_rate || 5}%`,
+      "Delivery Address": c.delivery_address || "",
+      "Payment Condition": c.payment_condition || "",
+      "Status": c.status || ""
+    }));
+    exportToCsv(`${moduleName.replace(/\s+/g, "_")}_Contracts`, exportRows);
+    showAppToast({
+      type: "success",
+      title: "📊 Excel Export Ready",
+      message: `Exported ${exportRows.length} contracts to CSV/Excel.`
+    });
+  };
+
   return <>
     <PageHeading
       eyebrow={`MODULE: ${moduleName.toUpperCase()}`}
       title={`${moduleName} Contract Register`}
       description={`View and manage all ${moduleName} contracts across the 4-step lifecycle.`}
-      action={<button className="button primary" onClick={() => navigate("/contracts/new")}><Plus size={17}/> Step 1: New Contract</button>}
+      action={
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="button secondary" onClick={handleExportContracts} title="Export to Excel / CSV">
+            <ArrowDownToLine size={15}/> Export Excel
+          </button>
+          <button className="button primary" onClick={() => navigate("/contracts/new")}>
+            <Plus size={17}/> Step 1: New Contract
+          </button>
+        </div>
+      }
     />
 
     <div className="filter-bar">
@@ -1438,7 +1548,11 @@ function ContractForm({ data, activeModule }) {
                       placeholder="e.g. Immediate / RTGS / 7 days"
                     />
                   </Field>
-                  <Field label="14. RATE PER CANDY" required hint="Rate in ₹ per Candy">
+                  <Field 
+                    label="14. RATE PER CANDY" 
+                    required 
+                    hint={form.rate_per_candy ? `≈ ₹${(Number(form.rate_per_candy) / 3.556).toFixed(0)}/Qtl (₹${(Number(form.rate_per_candy) / 17.78).toFixed(0)}/20kg)` : "1 Candy = 355.6 kg (3.556 Qtl)"}
+                  >
                     <input
                       ref={el => (contractRefs.current["rate_per_candy"] = el)}
                       type="number"
@@ -2815,6 +2929,30 @@ function GatePasses({ data, activeModule }) {
     return displayedPasses.slice(startIndex, startIndex + pageSize);
   }, [displayedPasses, page, pageSize]);
 
+  const handleExportGatePasses = () => {
+    const exportRows = displayedPasses.map(p => {
+      const c = p.contracts || {};
+      const l = p.loading_details || {};
+      return {
+        "Gate Pass No": p.gate_pass_number || "",
+        "Date": p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "",
+        "Module": p.module === "net_cotton" ? "Net Cotton" : "Cotton Seed",
+        "Contract No": c.contract_number || "",
+        "Party Name": c.party_name || "",
+        "Vehicle Number": l.vehicle_number || "",
+        "Net Weight (Qtl)": l.net_weight_quintals || "",
+        "Transporter": l.transport_name || "",
+        "LR Number": l.lr_number || ""
+      };
+    });
+    exportToCsv(`${moduleName.replace(/\s+/g, "_")}_Gate_Passes`, exportRows);
+    showAppToast({
+      type: "success",
+      title: "📊 Excel Export Ready",
+      message: `Exported ${exportRows.length} gate passes to CSV/Excel.`
+    });
+  };
+
   const handleDownloadPass = (p) => {
     const contract = p.contracts || data.contracts.find(c => c.id === p.contract_id);
     if (!contract) return;
@@ -2858,6 +2996,15 @@ function GatePasses({ data, activeModule }) {
               All Passes
             </button>
           </div>
+
+          <button 
+            className="button secondary" 
+            style={{ fontSize: 11, padding: "6px 12px" }}
+            onClick={handleExportGatePasses}
+            title="Export Gate Passes to Excel / CSV"
+          >
+            <ArrowDownToLine size={13}/> Export Excel
+          </button>
 
           <div style={{ position: "relative" }}>
             <input
@@ -3262,14 +3409,37 @@ function PartiesPage({ data, activeModule }) {
                   <td data-label="GST Number">{p.gst_number || "—"}</td>
                   <td data-label="Contact">{p.contact_number || "—"}</td>
                   <td data-label="Action">
-                    <button
-                      className="button primary"
-                      style={{ fontSize: 11, padding: "5px 10px", whiteSpace: "nowrap" }}
-                      onClick={() => navigate(`/contracts/new?party=${encodeURIComponent(p.name)}`)}
-                      title={`Generate new contract for ${p.name}`}
-                    >
-                      <FilePlus2 size={12}/> + New Contract
-                    </button>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      <button
+                        className="button primary"
+                        style={{ fontSize: 11, padding: "5px 8px", whiteSpace: "nowrap" }}
+                        onClick={() => navigate(`/contracts/new?party=${encodeURIComponent(p.name)}`)}
+                        title={`Generate new contract for ${p.name}`}
+                      >
+                        <FilePlus2 size={12}/> + New Contract
+                      </button>
+                      <button
+                        className="button secondary"
+                        style={{ fontSize: 11, padding: "5px 8px", whiteSpace: "nowrap" }}
+                        onClick={() => {
+                          const pContracts = (data.contracts || []).filter(c => (c.party_name || "").trim().toLowerCase() === p.name.trim().toLowerCase());
+                          let pPasses = [];
+                          try {
+                            const passes = JSON.parse(localStorage.getItem("seedledger_gate_passes_v4") || "[]");
+                            pPasses = passes.filter(pass => (pass.contracts?.party_name || "").trim().toLowerCase() === p.name.trim().toLowerCase());
+                          } catch (e) {}
+                          generatePartyStatementPdf(p.name, pContracts, pPasses);
+                          showAppToast({
+                            type: "success",
+                            title: "📄 Party Statement Generated",
+                            message: `Downloaded commercial ledger statement for ${p.name}`
+                          });
+                        }}
+                        title={`Print complete ledger statement for ${p.name}`}
+                      >
+                        <ArrowDownToLine size={12}/> Statement
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
