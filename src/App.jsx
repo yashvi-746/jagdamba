@@ -1922,6 +1922,46 @@ function ContractDetail({ data }) {
       </button>
     </div>
 
+    {/* PERSISTENT CONTRACT DISPATCH TRACKER HEADER (VISIBLE ON ALL DETAIL STEPS) */}
+    {contractTotalQty > 0 && (
+      <section className="panel" style={{ padding: 18, marginBottom: 18, background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="eyebrow" style={{ color: isNetCotton ? "#d97706" : "#2563eb", margin: 0 }}>CONTRACT DISPATCH TRACKER</span>
+              <span style={{
+                fontSize: 11,
+                padding: "2px 8px",
+                borderRadius: 6,
+                fontWeight: 700,
+                background: remainingBalanceQty === 0 ? "#dcfce7" : "#fef3c7",
+                color: remainingBalanceQty === 0 ? "#166534" : "#92400e"
+              }}>
+                {remainingBalanceQty === 0 ? "✓ 100% Fulfilled" : `⚠ ${remainingBalanceQty.toFixed(2)} Qtl Remaining`}
+              </span>
+            </div>
+            <strong style={{ fontSize: 16, color: "#1e293b", display: "block", marginTop: 4 }}>
+              {contract.party_name} — {contract.contract_number}
+            </strong>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ background: "#ffffff", border: "1.5px solid #cbd5e1", borderRadius: 8, padding: "8px 14px", textAlign: "center", minWidth: 100 }}>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Total Contract</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{contractTotalQty.toFixed(2)} Qtl</div>
+            </div>
+            <div style={{ background: "#ecfdf5", border: "1.5px solid #a7f3d0", borderRadius: 8, padding: "8px 14px", textAlign: "center", minWidth: 100 }}>
+              <div style={{ fontSize: 10, color: "#047857", textTransform: "uppercase", fontWeight: 700 }}>Dispatched</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#065f46" }}>{totalDispatchedSoFar.toFixed(2)} Qtl</div>
+            </div>
+            <div style={{ background: remainingBalanceQty > 0 ? "#fffbeb" : "#eff6ff", border: `1.5px solid ${remainingBalanceQty > 0 ? "#fde68a" : "#bfdbfe"}`, borderRadius: 8, padding: "8px 14px", textAlign: "center", minWidth: 110 }}>
+              <div style={{ fontSize: 10, color: remainingBalanceQty > 0 ? "#b45309" : "#1d4ed8", textTransform: "uppercase", fontWeight: 700 }}>Remaining Balance</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: remainingBalanceQty > 0 ? "#b45309" : "#1e40af" }}>{remainingBalanceQty.toFixed(2)} Qtl</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
     {message && <div className={message.includes("saved") || message.includes("generated") || message.includes("sent") ? "success-message" : "form-error"} style={{ marginBottom: 18 }}>{message}</div>}
 
     {/* STEP 1: CONTRACT DETAILS */}
