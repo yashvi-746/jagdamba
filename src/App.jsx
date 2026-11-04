@@ -1799,7 +1799,7 @@ function ContractDetail({ data }) {
       localStorage.setItem("seedledger_gate_passes_v4", JSON.stringify(updated));
     } catch (e) {}
 
-    // 2. Update contract in application state
+    // 2. Update contract in application state AND persist to local storage
     data.setContracts(old => old.map(c => {
       if (String(c.id) === String(contract.id) || (c.contract_number && c.contract_number === contract.contract_number)) {
         return {
@@ -1812,44 +1812,7 @@ function ContractDetail({ data }) {
       return c;
     }));
 
-    // 3. Sync to Supabase in background
-    if (isSupabaseConfigured && !data.demoMode) {
-      try {
-        const user = (await supabase.auth.getUser()).data.user;
-        const { data: dbLoading } = await supabase.from("loading_details").insert({
-          contract_id: contract.id,
-          vehicle_number: loading.vehicle_number,
-          net_weight_quintals: currentTruckWt,
-          driver_license_number: loading.driver_license_number,
-          driver_contact_number: loading.driver_contact_number || null,
-          transport_number: loading.transport_number || null,
-          transport_name: loading.transport_name,
-          lr_number: loading.lr_number,
-          created_by: user?.id
-        }).select().single();
-
-        if (dbLoading) {
-          await supabase.from("gate_passes").insert({
-            contract_id: contract.id,
-            loading_detail_id: dbLoading.id,
-            created_by: user?.id
-          });
-        }
-        await supabase.from("contracts").update({ status: newContractStatus }).eq("id", contract.id);
-      } catch (err) {
-        console.warn("Supabase background sync:", err.message);
-      }
-    }
-
-    // 4. Generate & Download official PDF
-    generateGatePassPdf(contract, loadingPayload, gateNum);
-
-    // Refresh state
-    loadDispatches();
-    setLoading(blankLoadingDetails);
-    setMessage(`Gate Pass ${gateNum} successfully generated! Dispatched: ${currentTruckWt} Qtl. Remaining: ${newRemaining.toFixed(2)} Qtl.`);
-    
-    // Trigger floating notification
+    // Trigger floating notification immediately so user has zero lag
     showAppToast({
       type: isFullyCompleted ? "success" : "info",
       title: isFullyCompleted ? "🎉 Contract Fully Completed" : `🚛 Gate Pass ${gateNum} Generated`,
@@ -1858,7 +1821,48 @@ function ContractDetail({ data }) {
         : `Dispatched ${currentTruckWt} Qtl. Remaining balance: ${newRemaining.toFixed(2)} Qtl.`
     });
 
+    setMessage(`Gate Pass ${gateNum} successfully generated! Dispatched: ${currentTruckWt} Qtl. Remaining: ${newRemaining.toFixed(2)} Qtl.`);
+    loadDispatches();
+    setLoading(blankLoadingDetails);
     setStep(4);
+
+    // 3. Generate PDF in non-blocking try-catch
+    try {
+      generateGatePassPdf(contract, loadingPayload, gateNum);
+    } catch (pdfErr) {
+      console.warn("PDF generation error:", pdfErr);
+    }
+
+    // 4. Sync to Supabase in background (silently, without blocking UI)
+    if (isSupabaseConfigured && !data.demoMode) {
+      (async () => {
+        try {
+          const user = (await supabase.auth.getUser()).data.user;
+          const { data: dbLoading } = await supabase.from("loading_details").insert({
+            contract_id: contract.id,
+            vehicle_number: loading.vehicle_number,
+            net_weight_quintals: currentTruckWt,
+            driver_license_number: loading.driver_license_number,
+            driver_contact_number: loading.driver_contact_number || null,
+            transport_number: loading.transport_number || null,
+            transport_name: loading.transport_name,
+            lr_number: loading.lr_number,
+            created_by: user?.id
+          }).select().single();
+
+          if (dbLoading) {
+            await supabase.from("gate_passes").insert({
+              contract_id: contract.id,
+              loading_detail_id: dbLoading.id,
+              created_by: user?.id
+            });
+          }
+          await supabase.from("contracts").update({ status: newContractStatus }).eq("id", contract.id);
+        } catch (err) {
+          console.warn("Supabase background sync:", err.message);
+        }
+      })();
+    }
   }
 
   // Step 3 save alias
