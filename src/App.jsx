@@ -3446,45 +3446,6 @@ function PartiesPage({ data, activeModule }) {
           </table>
         </div>
       )}
-
-      {displayedPasses.length > 10 && (
-        <div className="pagination-bar">
-          <div className="pagination-info">
-            Showing <strong>{((page - 1) * pageSize) + 1}</strong> - <strong>{Math.min(page * pageSize, displayedPasses.length)}</strong> of <strong>{displayedPasses.length}</strong> gate passes
-          </div>
-          <div className="pagination-controls">
-            <select 
-              className="pagination-size-select" 
-              value={pageSize} 
-              onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-            >
-              <option value={10}>10 / page</option>
-              <option value={25}>25 / page</option>
-              <option value={50}>50 / page</option>
-              <option value={100}>100 / page</option>
-            </select>
-            <button 
-              type="button" 
-              className="pagination-btn" 
-              disabled={page <= 1} 
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-            >
-              ◀ Prev
-            </button>
-            <span style={{ fontSize: 12, fontWeight: 600, padding: "0 6px" }}>
-              Page {page} of {totalPages}
-            </span>
-            <button 
-              type="button" 
-              className="pagination-btn" 
-              disabled={page >= totalPages} 
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            >
-              Next ▶
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   </>;
 }
