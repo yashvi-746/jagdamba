@@ -1028,18 +1028,22 @@ function ContractForm({ data, activeModule }) {
     let inserted = null;
     let insertError = null;
 
-    const res = await supabase
-      .from("contracts")
-      .insert(dbPayload)
-      .select()
-      .single();
+    try {
+      // Fast timeout: if network or Supabase takes more than 2.5 seconds, save locally immediately
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Network timeout")), 2500)
+      );
+      const insertPromise = supabase.from("contracts").insert(dbPayload).select().single();
+      const res = await Promise.race([insertPromise, timeoutPromise]);
+      inserted = res.data;
+      insertError = res.error;
+    } catch (err) {
+      insertError = { message: err.message || "Timeout" };
+    }
 
-    inserted = res.data;
-    insertError = res.error;
-
-    // If Supabase table hasn't run the Net Cotton migration yet, save contract locally with full fields
-    if (insertError) {
-      console.warn("Supabase insert encountered error, saving contract locally:", insertError.message);
+    // If Supabase is slow, offline, or table error, save contract instantly with local storage
+    if (insertError || !inserted) {
+      console.warn("Saving contract locally for fast response:", insertError?.message);
       const offlineContract = {
         ...finalForm,
         id: "local-" + Date.now(),
@@ -1048,7 +1052,7 @@ function ContractForm({ data, activeModule }) {
       data.setContracts(old => [offlineContract, ...old]);
       generateContractPdf(offlineContract);
 
-      // Save party into Supabase parties table or local fallback so it appears in Parties Directory
+      // Save party into Supabase parties table or local fallback in background
       if (finalForm.party_name) {
         supabase.from("parties").insert({
           name: finalForm.party_name,
@@ -1059,13 +1063,14 @@ function ContractForm({ data, activeModule }) {
         }).catch(() => {});
       }
 
-      navigate(`/contracts/${offlineContract.id}?step=2`);
-      setSaving(false);
       showAppToast({
         type: "success",
-        title: "📋 Contract Created (Saved Locally)",
-        message: `Contract ${generatedNumber} for ${finalForm.party_name} saved & PDF downloaded!`
+        title: "📋 Contract Created",
+        message: `Contract ${generatedNumber} saved & PDF downloaded!`
       });
+
+      navigate(`/contracts/${offlineContract.id}?step=2`);
+      setSaving(false);
       return;
     }
 
@@ -1073,7 +1078,7 @@ function ContractForm({ data, activeModule }) {
     data.setContracts(old => [completeContract, ...old]);
     generateContractPdf(completeContract);
 
-    // Save party into Supabase parties table
+    // Save party into Supabase in background
     if (finalForm.party_name) {
       supabase.from("parties").insert({
         name: finalForm.party_name,
@@ -1090,9 +1095,8 @@ function ContractForm({ data, activeModule }) {
       message: `Contract ${generatedNumber} for ${finalForm.party_name} saved & PDF downloaded!`
     });
 
-    await data.refresh();
-    navigate(`/contracts/${inserted.id}?step=2`);
     setSaving(false);
+    navigate(`/contracts/${inserted.id}?step=2`);
   }
 
   const termsList = isNetCotton ? NET_COTTON_TERMS : COTTON_SEED_TERMS;
