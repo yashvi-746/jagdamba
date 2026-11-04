@@ -298,8 +298,20 @@ export default function App() {
           <NavItem to="/" icon={<LayoutDashboard size={18}/>} label="Overview" onClick={() => setMobileOpen(false)} />
           <NavItem to="/contracts" icon={<FileText size={18}/>} label="Contract Register" count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule).length} onClick={() => setMobileOpen(false)} />
           <NavItem to="/contracts/new" icon={<FilePlus2 size={18}/>} label="Step 1: New Contract" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/confirmations" icon={<Send size={18}/>} label="Step 2: Send to Buyer" onClick={() => setMobileOpen(false)} />
-          <NavItem to="/loading" icon={<Truck size={18}/>} label="Step 3: Loading" onClick={() => setMobileOpen(false)} />
+          <NavItem
+            to="/confirmations"
+            icon={<Send size={18}/>}
+            label="Step 2: Send to Buyer"
+            count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule && c.status === "confirmed").length || null}
+            onClick={() => setMobileOpen(false)}
+          />
+          <NavItem
+            to="/loading"
+            icon={<Truck size={18}/>}
+            label="Step 3: Loading"
+            count={data.contracts.filter(c => (c.module || "cotton_seed") === activeModule && (c.status === "partially_dispatched" || c.status === "pending" || c.status === "loading")).length || null}
+            onClick={() => setMobileOpen(false)}
+          />
           <NavItem to="/gate-passes" icon={<PackageCheck size={18}/>} label="Step 4: Gate Passes" onClick={() => setMobileOpen(false)} />
           <NavItem to="/parties" icon={<Users size={18}/>} label="Parties" onClick={() => setMobileOpen(false)} />
         </nav>
@@ -1049,6 +1061,11 @@ function ContractForm({ data, activeModule }) {
 
       navigate(`/contracts/${offlineContract.id}?step=2`);
       setSaving(false);
+      showAppToast({
+        type: "success",
+        title: "📋 Contract Created (Saved Locally)",
+        message: `Contract ${generatedNumber} for ${finalForm.party_name} saved & PDF downloaded!`
+      });
       return;
     }
 
@@ -1066,6 +1083,12 @@ function ContractForm({ data, activeModule }) {
         created_by: user?.id
       }).catch(() => {});
     }
+
+    showAppToast({
+      type: "success",
+      title: "📋 Contract Created",
+      message: `Contract ${generatedNumber} for ${finalForm.party_name} saved & PDF downloaded!`
+    });
 
     await data.refresh();
     navigate(`/contracts/${inserted.id}?step=2`);
